@@ -9,7 +9,7 @@
   <meta name="author" content="Alejandro Nolla">
 
   
-  <meta name="description" content="Most of us, when conducting OSINT tasks or gathering information for preparing a pentest, draw on Google hacking techniques like site:company.acme &hellip;">
+  <meta name="description" content="What is moloch? As his own website says: &#8220;Moloch is an open source, large scale IPv4 packet capturing (PCAP), indexing and database system. A &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -83,6 +83,50 @@
 		<section class="content">
 			<div class="wrapper">
 				
+
+
+    <article class="post"><div class="title">
+    
+      <h1 class="entry-title"><a href="/2013/04/06/moloch-capturing-and-indexing-network-traffic-in-realtime/">Moloch: Capturing and Indexing Network Traffic in Realtime</a></h1>
+    
+</div>
+
+<div class="info">
+  <i class="icon-calendar"></i> 
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-04-06T00:40:00+02:00" pubdate data-updated="true">2013-04-06</time> &nbsp;&nbsp;
+  
+</div>
+
+<div class="post">
+  
+    <div class="entry-content"><h2>What is moloch?</h2>
+
+<p>As his own <a href="https://github.com/aol/moloch">website</a> says: <strong><em>&#8220;Moloch is an open source, large scale IPv4 packet capturing (PCAP), indexing and database system. A simple web interface is provided for PCAP browsing, searching, and exporting. APIs are exposed that allow PCAP data and JSON-formatted session data to be downloaded directly.&#8221;</em></strong> it will be very useful as a network forensic tool to analyze captured traffic (moloch can also index previously captured pcap files as we will see) in case of a security incident or detecting some suspicious behaviour like, for example, some kind of alert in our IDS.</p>
+
+<p>Thanks of indexing pcaps with <a href="http://www.elasticsearch.org/">elasticsearch</a>, moloch provide us with the ability to perform almost real-time searches among dozens or hundreds of captured GB network traffic being able to apply several filtering options on the way. It isn&#8217;t as complete as Wireshark filtering system for example but will save us tons of work when dealing with some filtering and visualization as well as Moloch will provide us with some features Wireshark lacks, like filtering by country or AS.</p>
+
+<p>I&#8217;m sure to not be the only who would have loved to rely on moloch when analyzing dozens of GB with tshark and wireshark, particularly each time you apply a filter to show some kind of data&#8230;</div>
+    
+    
+      <footer class="align-right">
+        <a rel="full-article" href="/2013/04/06/moloch-capturing-and-indexing-network-traffic-in-realtime/">Read on &rarr; &raquo;</a>
+      </footer>
+    
+  <div class="clear-both"></div>
+  
+</div>
+</article>
 
 
     <article class="post"><div class="title">

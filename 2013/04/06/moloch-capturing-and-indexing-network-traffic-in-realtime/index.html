@@ -1,24 +1,115 @@
-<?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Alejandro Nolla - z0mbiehunt3r]]></title>
-  <link href="http://blog.alejandronolla.com/atom.xml" rel="self"/>
-  <link href="http://blog.alejandronolla.com/"/>
-  <updated>2013-04-06T13:37:42+02:00</updated>
-  <id>http://blog.alejandronolla.com/</id>
-  <author>
-    <name><![CDATA[Alejandro Nolla]]></name>
-    
-  </author>
-  <generator uri="http://octopress.org/">Octopress</generator>
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Moloch: Capturing and indexing network traffic in realtime - Alejandro Nolla - z0mbiehunt3r</title>
+  <meta name="author" content="Alejandro Nolla">
 
   
-  <entry>
-    <title type="html"><![CDATA[Moloch: Capturing and indexing network traffic in realtime]]></title>
-    <link href="http://blog.alejandronolla.com/2013/04/06/moloch-capturing-and-indexing-network-traffic-in-realtime/"/>
-    <updated>2013-04-06T00:40:00+02:00</updated>
-    <id>http://blog.alejandronolla.com/2013/04/06/moloch-capturing-and-indexing-network-traffic-in-realtime</id>
-    <content type="html"><![CDATA[<h2>What is moloch?</h2>
+  <meta name="description" content="What is moloch? As his own website says: &#8220;Moloch is an open source, large scale IPv4 packet capturing (PCAP), indexing and database system. A &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://blog.alejandronolla.com/2013/04/06/moloch-capturing-and-indexing-network-traffic-in-realtime/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <link href="/atom.xml" rel="alternate" title="Alejandro Nolla - z0mbiehunt3r" type="application/atom+xml">
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-39408435-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body >
+	<div class="all">
+		<section class="sidebar align-center">
+			<header>
+				<a href="/">
+	<div class="profile_picture"></div>
+	<h1>Alejandro Nolla</h1>
+</a>
+<div class="slogan hide-mobile">
+</div>
+<div class="social">
+	<a href="http://twitter.com/z0mbiehunt3r">
+		<div class="button twitter">
+			<span class="icon-twitter"></span>
+		</div>
+	</a>
+	<a href="http://www.linkedin.com/in/alejandronollablanco">
+		<div class="button linkedin">
+			<span class="icon-linkedin"></span>
+		</div>
+	</a>
+	<a href="http://github.com/z0mbiehunt3r">
+		<div class="button github">
+			<span class="icon-github"></span>
+		</div>
+	</a>
+	<a href="mailto:alejandro.nolla@gmail.com">
+		<div class="button email">
+			<span class="icon-envelope"></span>
+		</div>
+	</a>
+	<a href="/atom.xml">
+		<div class="button rss">
+			<span class="icon-rss"></span>
+		</div>
+	</a>
+</div>
+
+			</header>
+		</section>
+		<section class="content">
+			<div class="wrapper">
+				<div>
+<article class="hentry" role="article">
+  <div class="title">
+    
+      <h1 class="entry-title">Moloch: Capturing and Indexing Network Traffic in Realtime</h1>
+    
+</div>
+
+<div class="info">
+  <i class="icon-calendar"></i> 
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-04-06T00:40:00+02:00" pubdate data-updated="true">2013-04-06</time> &nbsp;&nbsp;
+  
+</div>
+
+<div class="post">
+  
+  <div class="entry-content"><h2>What is moloch?</h2>
 
 <p>As his own <a href="https://github.com/aol/moloch">website</a> says: <strong><em>&#8220;Moloch is an open source, large scale IPv4 packet capturing (PCAP), indexing and database system. A simple web interface is provided for PCAP browsing, searching, and exporting. APIs are exposed that allow PCAP data and JSON-formatted session data to be downloaded directly.&#8221;</em></strong> it will be very useful as a network forensic tool to analyze captured traffic (moloch can also index previously captured pcap files as we will see) in case of a security incident or detecting some suspicious behaviour like, for example, some kind of alert in our IDS.</p>
 
@@ -49,7 +140,7 @@
 
 
 <p>Now the wizard will make us a few questions to configure moloch (capturer, viewer and elasticsearch instance) for us and everything will be running in a few moments (moloch will be installed by default at <em>&#8220;/data/moloch/&#8221;</em>) and we can access to web interface at <em>&#8220;https://MOLOCH_IP_ADDRESS:8005&#8221;</em>:<br/>
-<img src="http://blog.alejandronolla.com/images/upload/2013/04/moloch_fresh_install.png"></p>
+<img src="/images/upload/2013/04/moloch_fresh_install.png"></p>
 
 <p>As can be seen, moloch have already started to index all traffic seen on eth0, included every request to moloch web interface. If we don&#8217;t want this then we have to specify a capture filtering in <em><a href="http://en.wikipedia.org/wiki/Berkeley_Packet_Filter">Berkeley Packet Filter (bpf)</a></em> format at <em>&#8220;/data/moloch/etc/config.ini&#8221;</em>:</p>
 
@@ -102,7 +193,7 @@ We need to shutdown elasticsearch node and start it again, so here we go:</p>
 <p>
 We can also start viewer and capturer from same dir <em>&#8220;/data/moloch/bin/run_viewer.sh&#8221;</em> and <em>&#8220;/data/moloch/bin/run_capture.sh&#8221;</em> respectively.<br/>
 Now we have access to <a href="http://mobz.github.com/elasticsearch-head/">elasticsearch-head</a> plugin to see elasticsearch cluster health and manage it at <em>&#8220;https://MOLOCH_IP_ADDRESS:9200/_plugin/head/&#8221;</em>:<br/>
-<img src="http://blog.alejandronolla.com/images/upload/2013/04/elasticsearch_head.png"></p>
+<img src="/images/upload/2013/04/elasticsearch_head.png"></p>
 
 <h2>Moloch overview</h2>
 
@@ -115,18 +206,18 @@ Now we have access to <a href="http://mobz.github.com/elasticsearch-head/">elast
 
 <p>
 If we take a look again to moloch web interface now we will see some pretty info:<br/>
-<img src="http://blog.alejandronolla.com/images/upload/2013/04/moloch_scan01.png"></p>
+<img src="/images/upload/2013/04/moloch_scan01.png"></p>
 
 <p>We can see more info about any session clicking on &#8220;green plus&#8221; icon:<br/>
-<img src="http://blog.alejandronolla.com/images/upload/2013/04/moloch_scan02.png"></p>
+<img src="/images/upload/2013/04/moloch_scan02.png"></p>
 
 <p>A new dropdown will appear and will give us some interesting options like downloading pcap (for example, to make a deeper manual analysis with wireshark), downloading data in RAW format, and showing use a set of links to make some filtering.</p>
 
 <p>Let&#8217;s click on &#8220;User-Agent link&#8221; and then make a search to show only those indexed packets using the NSE user-agent, now you know who have scanned your network with nmap&#8217;s HTTP plugins in just a second ;).<br/>
-<img src="http://blog.alejandronolla.com/images/upload/2013/04/moloch_scan03.png"></p>
+<img src="/images/upload/2013/04/moloch_scan03.png"></p>
 
 <p>Moloch also have a useful &#8220;stats&#8221; menu to have realtime statistics about traffic being captured and indexed:<br/>
-<img src="http://blog.alejandronolla.com/images/upload/2013/04/moloch_stats.png"></p>
+<img src="/images/upload/2013/04/moloch_stats.png"></p>
 
 <h2>Indexing previously captured traffic</h2>
 
@@ -181,15 +272,15 @@ I&#8217;m going to index a sample of about 7,5GB from a DNS amplification DDoS a
 
 <p>
 After some minutes i already had indexed some millions of packets and can view them just searching for tag ddos (i have stripped out map and some info to don&#8217;t disclose anything about customer / attack):<br/>
-<img src="http://blog.alejandronolla.com/images/upload/2013/04/ddos_tags.png"></p>
+<img src="/images/upload/2013/04/ddos_tags.png"></p>
 
 <p>Let&#8217;s say we want to show every DNS datagram originating from port 53 by servers geolocated at Russia:<br/>
-<img src="http://blog.alejandronolla.com/images/upload/2013/04/ddos_filtered.png"></p>
+<img src="/images/upload/2013/04/ddos_filtered.png"></p>
 
 <p>As can be seen, there were peaks of almost 60.000 packets per second (DNS answers) with an average of approximately 20.000 at regular intervals in this six minutes slot.</p>
 
 <p>Moloch give us the chance to visualize indexed traffic from a graph&#8217;s theory point of view (&#8220;Connections&#8221; tab), using hosts as nodes and connections (with or without port) as edges:<br/>
-<img src="http://blog.alejandronolla.com/images/upload/2013/04/ddos_connections.png"></p>
+<img src="/images/upload/2013/04/ddos_connections.png"></p>
 
 <p>This is really useful to get an idea at a glance of what event is being analyzed, in this case we can easily spot few targets and thousands of hosts targeting them.</p>
 
@@ -317,165 +408,66 @@ This simple code will show something similar to this:</p>
 <p>That is all for now, hope you liked this and find it useful, i think moloch is a really powerful tool and will turn to a must-have in network forensics as well as saving us countless hours when dealing with big amounts of network traffic.</p>
 
 <p>See you soon!</p>
-]]></content>
-  </entry>
+</div>
   
-  <entry>
-    <title type="html"><![CDATA[Indexing PDF for OSINT and pentesting]]></title>
-    <link href="http://blog.alejandronolla.com/2013/03/23/indexing-pdf-for-osint-and-pentesting/"/>
-    <updated>2013-03-23T10:26:00+01:00</updated>
-    <id>http://blog.alejandronolla.com/2013/03/23/indexing-pdf-for-osint-and-pentesting</id>
-    <content type="html"><![CDATA[<p>Most of us, when conducting OSINT tasks or gathering information for preparing a pentest, draw on Google hacking techniques like <strong>site:company.acme filetype:pdf &#8220;for internal use only&#8221;</strong> or something similar to search for potential sensitive information uploaded by mistake. Other times, a customer ask us to know if they have leaked in a negligence this kind of sensitive information and we proceed to make some google hacking fu. <br/>
-But, what happens if we don&#8217;t want to make this queries against Google and, furthermore, follow links from search that could potentially leak referers? Sure we could download documents and review them manually in local but it&#8217;s boring and time consuming. Here is where <a href="http://lucene.apache.org/solr/">Apache Solr</a> comes into play for processing documents and create index of them to give us almost real time searching capabilities.<!-- more --></p>
+</div>
 
-<h2>What is Solr?</h2>
-
-<p>Solr is a schema based (also with dynamics field support) search solution built upon Apache Lucene providing full-text searching capabilities, document processing, REST API to fetch results in various formats like XML or JSON, etc.  Solr allows us to process document indexing with multiple options regarding of how to treat text, how to tokenize it, convert (or not) to lowercase automatically, build distributed cluster, automatic duplicates document detection and so.</p>
-
-<h2>Setting up Solr</h2>
-
-<p>There are a lot of stuff about how to install Solr so i&#8217;m not going to cover it, just specific core options for this quick&#8217;n dirty solution. First thing to do is creating core config and data dir, in this case i created <em>/opt/solr/pdfosint/</em> and <em>/opt/solr/pdfosintdata/</em> to store config and document data respectively.</p>
-
-<p>To set schema up just create <em>/opt/solr/pdfosint/conf/schema.xml</em> file with following content:</p>
-
-<figure class='code'><figcaption><span>schema.xml content for pdfosint core</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; ?&gt;</span>
-</span><span class='line'><span class="nt">&lt;schema</span> <span class="na">name=</span><span class="s">&quot;pastebincom&quot;</span> <span class="na">version=</span><span class="s">&quot;1.5&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'> <span class="nt">&lt;fields&gt;</span>
-</span><span class='line'>   <span class="nt">&lt;field</span> <span class="na">name=</span><span class="s">&quot;id&quot;</span> <span class="na">type=</span><span class="s">&quot;uuid&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="na">stored=</span><span class="s">&quot;true&quot;</span> <span class="na">default=</span><span class="s">&quot;NEW&quot;</span> <span class="na">multiValued=</span><span class="s">&quot;false&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>   <span class="nt">&lt;field</span> <span class="na">name=</span><span class="s">&quot;text&quot;</span> <span class="na">type=</span><span class="s">&quot;text_general&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="na">stored=</span><span class="s">&quot;true&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>   <span class="nt">&lt;field</span> <span class="na">name=</span><span class="s">&quot;timestamp&quot;</span> <span class="na">type=</span><span class="s">&quot;date&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="na">stored=</span><span class="s">&quot;true&quot;</span> <span class="na">default=</span><span class="s">&quot;NOW&quot;</span> <span class="na">multiValued=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>   <span class="nt">&lt;field</span> <span class="na">name=</span><span class="s">&quot;_version_&quot;</span> <span class="na">type=</span><span class="s">&quot;long&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="na">stored=</span><span class="s">&quot;true&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>   <span class="nt">&lt;dynamicField</span> <span class="na">name=</span><span class="s">&quot;attr_*&quot;</span> <span class="na">type=</span><span class="s">&quot;text_general&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="na">stored=</span><span class="s">&quot;true&quot;</span> <span class="na">multiValued=</span><span class="s">&quot;true&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'> <span class="nt">&lt;/fields&gt;</span>
-</span><span class='line'>
-</span><span class='line'> <span class="nt">&lt;types&gt;</span>
-</span><span class='line'>   <span class="nt">&lt;fieldType</span> <span class="na">name=</span><span class="s">&quot;string&quot;</span> <span class="na">class=</span><span class="s">&quot;solr.StrField&quot;</span> <span class="na">sortMissingLast=</span><span class="s">&quot;true&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>   <span class="nt">&lt;fieldType</span> <span class="na">name=</span><span class="s">&quot;long&quot;</span> <span class="na">class=</span><span class="s">&quot;solr.TrieLongField&quot;</span> <span class="na">precisionStep=</span><span class="s">&quot;0&quot;</span> <span class="na">positionIncrementGap=</span><span class="s">&quot;0&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>   <span class="nt">&lt;fieldType</span> <span class="na">name=</span><span class="s">&quot;date&quot;</span> <span class="na">class=</span><span class="s">&quot;solr.TrieDateField&quot;</span> <span class="na">precisionStep=</span><span class="s">&quot;0&quot;</span> <span class="na">positionIncrementGap=</span><span class="s">&quot;0&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>   <span class="nt">&lt;fieldType</span> <span class="na">name=</span><span class="s">&quot;uuid&quot;</span> <span class="na">class=</span><span class="s">&quot;solr.UUIDField&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>   <span class="nt">&lt;fieldType</span> <span class="na">name=</span><span class="s">&quot;text_general&quot;</span> <span class="na">class=</span><span class="s">&quot;solr.TextField&quot;</span> <span class="na">positionIncrementGap=</span><span class="s">&quot;100&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>      <span class="nt">&lt;analyzer</span> <span class="na">type=</span><span class="s">&quot;index&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;tokenizer</span> <span class="na">class=</span><span class="s">&quot;solr.WhitespaceTokenizerFactory&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;filter</span> <span class="na">class=</span><span class="s">&quot;solr.LowerCaseFilterFactory&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>      <span class="nt">&lt;/analyzer&gt;</span>
-</span><span class='line'>      <span class="nt">&lt;analyzer</span> <span class="na">type=</span><span class="s">&quot;query&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;tokenizer</span> <span class="na">class=</span><span class="s">&quot;solr.WhitespaceTokenizerFactory&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;filter</span> <span class="na">class=</span><span class="s">&quot;solr.LowerCaseFilterFactory&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>      <span class="nt">&lt;/analyzer&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;/fieldType&gt;</span>
-</span><span class='line'> <span class="nt">&lt;/types&gt;</span>
-</span><span class='line'><span class="nt">&lt;/schema&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Just a quick review of config for schema.xml, i specified an id field to be unique (UUID), a text field to store text itself, timestamp to be setted to date when document is pushed into Solr, <em>version</em> to track index version (internal Solr use to replicate, and so) and a dynamic field named attr_* to store any no specified value in schema and provided by parser. At last, i specified how to treat indexing and querying, for tokenize i use whitespice (splice words based just on whitespace without caring about special punctuaction) and convert it to lowercase. If you want to know more about text processing i would recommend <a href="http://www.packtpub.com/python-text-processing-nltk-20-cookbook/book">Python Text Processing with NLTK 2.0 Cookbok</a> as an introduction, <a href="http://shop.oreilly.com/product/9780596516499.do">Natural Language Processing with Python</a> for a more in-depth usage (both Python based) and <a href="https://www.coursera.org/course/nlangp">Natural Language Processing</a> online course available in Coursera.</p>
-
-<p>Next step is notyfing Solr about new core, just adding to <em>/opt/solr/solr.xml/</em></p>
-
-<figure class='code'><figcaption><span>new core for PDF indexing</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;cores&gt;</span>
-</span><span class='line'>  ...
-</span><span class='line'>  <span class="nt">&lt;core</span> <span class="na">name=</span><span class="s">&quot;pdfosint&quot;</span> <span class="na">instanceDir=</span><span class="s">&quot;pdfosint&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'><span class="nt">&lt;/cores&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Now only left to provide Solr with binary document processing capabilities through a <a href="http://wiki.apache.org/solr/SolrRequestHandler">request handler</a>, in that case, only for <em>pdfosint</em> core. For this create <em>/opt/solr/pdfosint/solrconfig.xml</em> (we can always copy provided example with Solr and modify when needed) and specify request handler:</p>
-
-<figure class='code'><figcaption><span>setting up solr request handler for binary documents</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'>  <span class="nt">&lt;requestHandler</span> <span class="na">name=</span><span class="s">&quot;/update/extract&quot;</span> <span class="na">class=</span><span class="s">&quot;org.apache.solr.handler.extraction.ExtractingRequestHandler&quot;</span> <span class="nt">&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;lst</span> <span class="na">name=</span><span class="s">&quot;defaults&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;str</span> <span class="na">name=</span><span class="s">&quot;fmap.content&quot;</span><span class="nt">&gt;</span>text<span class="nt">&lt;/str&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;str</span> <span class="na">name=</span><span class="s">&quot;lowernames&quot;</span><span class="nt">&gt;</span>true<span class="nt">&lt;/str&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;str</span> <span class="na">name=</span><span class="s">&quot;uprefix&quot;</span><span class="nt">&gt;</span>attr_<span class="nt">&lt;/str&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;str</span> <span class="na">name=</span><span class="s">&quot;captureAttr&quot;</span><span class="nt">&gt;</span>true<span class="nt">&lt;/str&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;/lst&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;/requestHandler&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>A quick review of this, class could changed depending on version and classes names, fmap.content specify to index extracted text to a field called <em>text</em>, lowernames specify converting to lowercase all processed documents, uprefix specify how to handled field parsed and not provided in schema.xml (in that case use dynamic attribute with a suffix of <em>attr_</em>) and captureAttr to specify indexing parsed attributes into separate fields. To know more about ExtractingRequestHandler <a href="http://wiki.apache.org/solr/ExtractingRequestHandler">here</a>.<br/>
-Now we have to install required libraries to do binary parsing and indexing, for this, i have created <em>/opt/solr/extract/</em> and copied <em>solr-cell-4.2.0.jar</em> from <em>dist</em> directory inside of Solr distribution archive and also copied to the same folder everything from <em>contrib/extraction/lib/</em> again from distribution archive.</p>
-
-<p>At last, adding this line to <em>/opt/solr/pdfosint/solrconfix.xml</em> to specify from where load libraries:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'>...
-</span><span class='line'><span class="nt">&lt;lib</span> <span class="na">dir=</span><span class="s">&quot;/opt/solr/extract&quot;</span> <span class="na">regex=</span><span class="s">&quot;.*\.jar&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>...
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>To know more about this process and more recipes, i strongly recommend [Apache Solr 4 Cookbook] (http://www.packtpub.com/apache-solr-4-cookbook/book).</p>
-
-<h2>Indexing and digging data</h2>
-
-<p>Now we have a extracting and indexing handler at <em>http://localhost:8080/solr/pdfosint/update/extract/</em> so only rest to send PDF to Solr and analyze them. The easyiest way once downloaded (or maybe  fetched from a meterpreter session? }:) ) is sending them with curl to Solr:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span><span class="k">for </span>i in <span class="sb">`</span>ls /tmp/pdf/*.pdf<span class="sb">`</span>; <span class="k">do </span>curl <span class="s2">&quot;http://localhost:8080/solr/pdfosint/update/extract/?commit=true&quot;</span> -F <span class="s2">&quot;myfile=@$i&quot;</span>; <span class="k">done</span>;
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>After a while, depending on several factors like machine specs and documents size, we should have an index like this:
-<img src="http://blog.alejandronolla.com/images/upload/2013/03/solr_index.png"></p>
-
-<p>So now we try a query to find documents with phrase <em>&#8220;internal use only&#8221;</em> and bingo!:
-<img src="http://blog.alejandronolla.com/images/upload/2013/03/solr_query.png"></p>
-
-<p>It&#8217;s important to have in mind the fact that Solr split words and treat them before indexing when doing queries, to see how a phrase should be treated and indexed by Solr when submitted we can do an analysis with builtin interface:<br/>
-<img src="http://blog.alejandronolla.com/images/upload/2013/03/solr_analysis.png"></p>
-
-<p>I hope you find it useful and give it a try, see you soon!</p>
-]]></content>
-  </entry>
   
-  <entry>
-    <title type="html"><![CDATA[Embrace yourselves, blog is coming...]]></title>
-    <link href="http://blog.alejandronolla.com/2013/03/18/embrace-yourselves/"/>
-    <updated>2013-03-18T23:45:00+01:00</updated>
-    <id>http://blog.alejandronolla.com/2013/03/18/embrace-yourselves</id>
-    <content type="html"><![CDATA[<p>I have decided to give a try to octopress for setting up a basic blog to publish some stuff hopefully useful to someone.</p>
-]]></content>
-  </entry>
+    <div class="sharing">
   
-</feed>
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://blog.alejandronolla.com/2013/04/06/moloch-capturing-and-indexing-network-traffic-in-realtime/" data-via="z0mbiehunt3r" data-counturl="http://blog.alejandronolla.com/2013/04/06/moloch-capturing-and-indexing-network-traffic-in-realtime/" >Tweet</a>
+  
+  
+  
+</div>
+
+  
+    <div class="post_paginator">
+    
+    
+      <a class="basic-alignment left" href="/2013/03/23/indexing-pdf-for-osint-and-pentesting/" title="Previous Post: Indexing PDF for OSINT and pentesting">&laquo; Indexing PDF for OSINT and pentesting</a>
+    
+  </div>
+</article>
+<hr class="clear-both" />
+
+</div>
+
+			</div>
+		</section>
+		<footer class="align-center">
+			<div class="license">
+	<a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US"><img alt="Creative Commons License" style="border-width:0" src="http://i.creativecommons.org/l/by-nc-sa/3.0/88x31.png" /></a>
+</div>
+<div class="powered-by">
+	Design by <a href="http://twitter.com/fmartingr">@fmartingr</a>
+</div>
+
+		</footer>
+	</div>
+<script src="/javascripts/site.js"></script>
+<script> updateSizes(); </script>
+
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

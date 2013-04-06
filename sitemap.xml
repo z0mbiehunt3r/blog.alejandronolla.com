@@ -11,15 +11,21 @@
         <lastmod>2013-03-28T23:22:29+01:00</lastmod>
     </url>
     <url>
+        <loc>
+            http://blog.alejandronolla.com/2013/04/06/moloch-capturing-and-indexing-network-traffic-in-realtime/
+        </loc>
+        <lastmod>2013-04-06T13:37:19+02:00</lastmod>
+    </url>
+    <url>
         <loc>http://blog.alejandronolla.com/robots.txt</loc>
         <lastmod>2013-03-28T22:38:31+01:00</lastmod>
     </url>
     <url>
         <loc>http://blog.alejandronolla.com/blog/archives/</loc>
-        <lastmod>2013-03-28T23:22:29+01:00</lastmod>
+        <lastmod>2013-04-06T13:37:19+02:00</lastmod>
     </url>
     <url>
         <loc>http://blog.alejandronolla.com/</loc>
-        <lastmod>2013-03-28T23:22:29+01:00</lastmod>
+        <lastmod>2013-04-06T13:37:19+02:00</lastmod>
     </url>
 </urlset>

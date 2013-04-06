@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: elasticsearch, | Alejandro Nolla - z0mbiehunt3r]]></title>
+  <link href="http://blog.alejandronolla.com/blog/categories/elasticsearch/atom.xml" rel="self"/>
+  <link href="http://blog.alejandronolla.com/"/>
+  <updated>2013-04-06T13:37:42+02:00</updated>
+  <id>http://blog.alejandronolla.com/</id>
+  <author>
+    <name><![CDATA[Alejandro Nolla]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Moloch: Capturing and indexing network traffic in realtime]]></title>
+    <link href="http://blog.alejandronolla.com/2013/04/06/moloch-capturing-and-indexing-network-traffic-in-realtime/"/>
+    <updated>2013-04-06T00:40:00+02:00</updated>
+    <id>http://blog.alejandronolla.com/2013/04/06/moloch-capturing-and-indexing-network-traffic-in-realtime</id>
+    <content type="html"><![CDATA[<h2>What is moloch?</h2>
+
+<p>As his own <a href="https://github.com/aol/moloch">website</a> says: <strong><em>"Moloch is an open source, large scale IPv4 packet capturing (PCAP), indexing and database system. A simple web interface is provided for PCAP browsing, searching, and exporting. APIs are exposed that allow PCAP data and JSON-formatted session data to be downloaded directly."</em></strong> it will be very useful as a network forensic tool to analyze captured traffic (moloch can also index previously captured pcap files as we will see) in case of a security incident or detecting some suspicious behaviour like, for example, some kind of alert in our IDS.</p>
+
+<p>Thanks of indexing pcaps with <a href="http://www.elasticsearch.org/">elasticsearch</a>, moloch provide us with the ability to perform almost real-time searches among dozens or hundreds of captured GB network traffic being able to apply several filtering options on the way. It isn't as complete as Wireshark filtering system for example but will save us tons of work when dealing with some filtering and visualization as well as Moloch will provide us with some features Wireshark lacks, like filtering by country or AS.</p>
+
+<p>I'm sure to not be the only who would have loved to rely on moloch when analyzing dozens of GB with tshark and wireshark, particularly each time you apply a filter to show some kind of data...<!-- more --></p>
+
+<h2>Installing moloch</h2>
+
+<p>For deploying a moloch machine in a "all-in-one" setup i created a virtual machine with Ubuntu server 12.10 64bits and assigned about 100GB of HDD, 16GB of RAM and 4 CPU cores, moloch is a highly consuming platform, to have a more detailed info about this go to <a href="https://github.com/aol/moloch#id23">hardware requirements</a>.</p>
+
+<p>First step will be updating the box, installing java and cloning github repository:
+``` bash Updating system and cloning repo</p>
+
+<h1>apt-get update &amp;&amp; apt-get upgrade -y &amp;&amp; apt-get install git openjdk-7-jdk openjdk-7-jre -y</h1>
+
+<h1>git clone https://github.com/aol/moloch.git</h1>
+
+<p><code>
+Once cloned the repo we must install, at least, one of his components: capture, viewer or elasticsearch. Because we are going to mess up a bit with moloch to get an overview of functionalities and capabilities we will take the shortest path, installing moloch through provided bash script to setup everything in the same machine; if you prefer to install it manually or are going to build a distributed cluster check "[Building and Installing](https://github.com/aol/moloch#id15)":
+</code> bash Installing moloch automatically
+~/moloch# ./easybutton-singlehost.sh
+```
+Now the wizard will make us a few questions to configure moloch (capturer, viewer and elasticsearch instance) for us and everything will be running in a few moments (moloch will be installed by default at <em>"/data/moloch/"</em>) and we can access to web interface at <em>"https://MOLOCH_IP_ADDRESS:8005"</em>:<br/>
+<img src="/images/upload/2013/04/moloch_fresh_install.png"></p>
+
+<p>As can be seen, moloch have already started to index all traffic seen on eth0, included every request to moloch web interface. If we don't want this then we have to specify a capture filtering in <em><a href="http://en.wikipedia.org/wiki/Berkeley_Packet_Filter">Berkeley Packet Filter (bpf)</a></em> format at <em>"/data/moloch/etc/config.ini"</em>:<br/>
+<code>bash Don't index ANY traffic related with moloch box
+bpf=not host 192.168.1.39
+</code></p>
+
+<p>To change elasticsearch configuration and allow access from other IP address than moloch host itself (it could pose a security risk, using SSH tunneling would be a better aproach) go to <em>"/data/moloch/etc/elasticsearch.yml"</em> and edit network parameters (<em>network.host</em>), to view/change moloch configuration take a look to <em>"/data/moloch/etc/config.ini"</em>:<br/>
+``` bash Changing binded IP address</p>
+
+<h1>Set the bind address specifically (IPv4 or IPv6):</h1>
+
+<p>#
+network.bind_host: 0.0.0.0</p>
+
+<h1>Set the address other nodes will use to communicate with this node. If not</h1>
+
+<h1>set, it is automatically derived. It must point to an actual IP address.</h1>
+
+<p>#
+network.publish_host: 0.0.0.0</p>
+
+<h1>Set both 'bind_host' and 'publish_host':</h1>
+
+<p>#
+network.host: 0.0.0.0</p>
+
+<p><code>  
+We need to shutdown elasticsearch node and start it again, so here we go:
+</code> bash Restarting elasticsearch</p>
+
+<h1>curl -XPOST 'http://localhost:9200/_shutdown'</h1>
+
+<h1>nohup /data/moloch/bin/run_es.sh &amp;</h1>
+
+<p>```<br/>
+We can also start viewer and capturer from same dir <em>"/data/moloch/bin/run_viewer.sh"</em> and <em>"/data/moloch/bin/run_capture.sh"</em> respectively.<br/>
+Now we have access to <a href="http://mobz.github.com/elasticsearch-head/">elasticsearch-head</a> plugin to see elasticsearch cluster health and manage it at <em>"https://MOLOCH_IP_ADDRESS:9200/_plugin/head/"</em>:<br/>
+<img src="/images/upload/2013/04/elasticsearch_head.png"></p>
+
+<h2>Moloch overview</h2>
+
+<p>To have some info indexed by moloch in a few minutes we are going to make some light random nmap scans, having in mind the interface assigned to virtual machine. If you want to use virtual interface and launch nmap scan from moloch box then you could need to change bpf filter to <em>"bpf=not port (9200 or 8005)"</em> (this isn't, by far, the correct way, but will be enough for a quick test).<br/>
+``` bash Quick nmap scan to index some HTTP headers</p>
+
+<h1>./nmap -sS -Pn -n -v -p80 -iR 10000 --script=http-headers</h1>
+
+<p>```<br/>
+If we take a look again to moloch web interface now we will see some pretty info:<br/>
+<img src="/images/upload/2013/04/moloch_scan01.png"></p>
+
+<p>We can see more info about any session clicking on "green plus" icon:<br/>
+<img src="/images/upload/2013/04/moloch_scan02.png"></p>
+
+<p>A new dropdown will appear and will give us some interesting options like downloading pcap (for example, to make a deeper manual analysis with wireshark), downloading data in RAW format, and showing use a set of links to make some filtering.</p>
+
+<p>Let's click on "User-Agent link" and then make a search to show only those indexed packets using the NSE user-agent, now you know who have scanned your network with nmap's HTTP plugins in just a second ;).<br/>
+<img src="/images/upload/2013/04/moloch_scan03.png"></p>
+
+<p>Moloch also have a useful "stats" menu to have realtime statistics about traffic being captured and indexed:<br/>
+<img src="/images/upload/2013/04/moloch_stats.png"></p>
+
+<h2>Indexing previously captured traffic</h2>
+
+<p>To index traffic captured in pcap format we have to use "moloch-capture" stored in <em>"/data/moloch/bin/moloch-capture"</em>:<br/>
+``` bash moloch-capture options</p>
+
+<h1>./moloch-capture -h</h1>
+
+<p>Usage:
+  moloch-capture [OPTION...] - capture</p>
+
+<p>Help Options:
+  -h, --help         Show help options</p>
+
+<p>Application Options:
+  -c, --config       Config file name, default '/data/moloch/etc/config.ini'
+  -r, --pcapfile     Offline pcap file
+  -R, --pcapdir      Offline pcap directory, all *.pcap files will be processed
+  --recursive        When in offline pcap directory mode, recurse sub directories
+  -n, --node         Our node name, defaults to hostname.  Multiple nodes can run on same host.
+  -t, --tag          Extra tag to add to all packets, can be used multiple times
+  -v, --version      Show version number
+  -d, --debug        Turn on all debugging
+  --copy             When in offline mode copy the pcap files into the pcapDir from the config file
+  --dryrun           dry run, noting written to database</p>
+
+<p><code>  
+I'm going to index a sample of about 7,5GB from a DNS amplification DDoS attack i had to analyze and help to mitigate some months ago, but to quickly download some pcaps to play around NetreseC have a published a good [list](http://www.netresec.com/?page=PcapFiles):  
+</code> bash Indexing pcaps from a dir</p>
+
+<h1>./moloch-capture -R /tmp/ddos_pcaps/ --tag ddos --copy</h1>
+
+<p>```<br/>
+After some minutes i already had indexed some millions of packets and can view them just searching for tag ddos (i have stripped out map and some info to don't disclose anything about customer / attack):<br/>
+<img src="/images/upload/2013/04/ddos_tags.png"></p>
+
+<p>Let's say we want to show every DNS datagram originating from port 53 by servers geolocated at Russia:<br/>
+<img src="/images/upload/2013/04/ddos_filtered.png"></p>
+
+<p>As can be seen, there were peaks of almost 60.000 packets per second (DNS answers) with an average of approximately 20.000 at regular intervals in this six minutes slot.</p>
+
+<p>Moloch give us the chance to visualize indexed traffic from a graph's theory point of view ("Connections" tab), using hosts as nodes and connections (with or without port) as edges:<br/>
+<img src="/images/upload/2013/04/ddos_connections.png"></p>
+
+<p>This is really useful to get an idea at a glance of what event is being analyzed, in this case we can easily spot few targets and thousands of hosts targeting them.</p>
+
+<h2>Moloch API</h2>
+
+<p>At the beginning of this post i said that Moloch have an API to query and get some info about indexed pcaps and so on in JSON format. At this moment probably the best way to see which calls exists is directly reading the viewer <a href="https://github.com/aol/moloch/blob/master/viewer/viewer.js">code</a>.</p>
+
+<p>There is an example of python code to query moloch API and show some statistics:<br/>
+``` python Using moloch API to show some statistics</p>
+
+<h1>!/usr/bin/env python</h1>
+
+<p>import json
+import sys
+import urllib2</p>
+
+<p>MOLOCH_URL = 'https://192.168.1.39:8005'
+MOLOCH_USER = 'admin'
+MOLOCH_PASSWORD = 'admin'
+MOLOCH_REALM = 'Moloch'</p>
+
+<p>if <strong>name</strong>=='<strong>main</strong>':</p>
+
+<pre><code># Set up authentication
+auth_handler = urllib2.HTTPDigestAuthHandler()
+auth_handler.add_password(MOLOCH_REALM, MOLOCH_URL, MOLOCH_USER, MOLOCH_PASSWORD)
+opener = urllib2.build_opener(auth_handler)
+
+try:
+    response = opener.open('%s/esstats.json' % MOLOCH_URL)
+    if response.code == 200:
+        # Read html response and transform to JSON
+        plain_answer = response.read()
+        json_data = json.loads(plain_answer)
+
+        # Extract info
+        node_name = json_data['aaData'][0]['name']
+        documents_num = json_data['aaData'][0]['docs']
+        searches_num = json_data['aaData'][0]['searches']
+        searches_time_total = json_data['aaData'][0]['searchesTime'] # milliseconds
+        store_size_bytes = json_data['aaData'][0]['storeSize'] # bytes
+
+        # Show it
+        store_size_mb = store_size_bytes / (1024 * 1024)
+        searches_time_average_seconds = float(searches_time_total / searches_num)/1000
+
+        print '[*] Some statistics about elasticsearch at node "%s"' % node_name
+        print '   [+] There are %i indexed documents within %i MB of index'\
+              % (documents_num, store_size_mb)
+        print '   [+] This elasticsearch node has served up %i queries with an average\
+        of %f seconds per query' % (searches_num, searches_time_average_seconds)
+        print '[-]'
+
+except Exception, e:
+    raise e
+</code></pre>
+
+<p><code>  
+This simple code will show something similar to this:  
+</code> bash Output for moloch_api_example.py
+$ python moloch_api_example.py
+[*] Some statistics about elasticsearch at node "molocha"
+   [+] There are 1624416 indexed documents within 963 MB of index
+   [+] This elasticsearch node has served up 1042 queries with an average of 0.012000 seconds per query
+[-]
+```</p>
+
+<p>That is all for now, hope you liked this and find it useful, i think moloch is a really powerful tool and will turn to a must-have in network forensics as well as saving us countless hours when dealing with big amounts of network traffic.</p>
+
+<p>See you soon!</p>
+]]></content>
+  </entry>
+  
+</feed>
