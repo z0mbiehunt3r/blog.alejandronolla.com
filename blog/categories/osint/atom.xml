@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Category: osint, | Alejandro Nolla - z0mbiehunt3r]]></title>
+  <title><![CDATA[Category: osint | Alejandro Nolla - z0mbiehunt3r]]></title>
   <link href="http://blog.alejandronolla.com/blog/categories/osint/atom.xml" rel="self"/>
   <link href="http://blog.alejandronolla.com/"/>
-  <updated>2013-04-30T14:43:47+02:00</updated>
+  <updated>2013-04-30T14:47:54+02:00</updated>
   <id>http://blog.alejandronolla.com/</id>
   <author>
     <name><![CDATA[Alejandro Nolla]]></name>
@@ -294,6 +294,116 @@ Because we "reduce" words to his root probably few of them, per document, will s
 <p>As shown in the above table, the "worst" query i'm now performing (dozens of logical operators and wildcards) will take about 38% time less per query hit and, in an application which performs hundreds of query per hour, it's a great improvement without disrupting normal functioning (looking for domains and IP addresses) and, in the other hand, it will take almost no more time to index and more than reasonable index size increment that worth it.</p>
 
 <p>Hope you liked it and can apply someway to your needs, see you soon!</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Indexing PDF for OSINT and pentesting]]></title>
+    <link href="http://blog.alejandronolla.com/2013/03/23/indexing-pdf-for-osint-and-pentesting/"/>
+    <updated>2013-03-23T10:26:00+01:00</updated>
+    <id>http://blog.alejandronolla.com/2013/03/23/indexing-pdf-for-osint-and-pentesting</id>
+    <content type="html"><![CDATA[<p>Most of us, when conducting OSINT tasks or gathering information for preparing a pentest, draw on Google hacking techniques like <strong>site:company.acme filetype:pdf "for internal use only"</strong> or something similar to search for potential sensitive information uploaded by mistake. Other times, a customer ask us to know if they have leaked in a negligence this kind of sensitive information and we proceed to make some google hacking fu. <br/>
+But, what happens if we don't want to make this queries against Google and, furthermore, follow links from search that could potentially leak referers? Sure we could download documents and review them manually in local but it's boring and time consuming. Here is where <a href="http://lucene.apache.org/solr/">Apache Solr</a> comes into play for processing documents and create index of them to give us almost real time searching capabilities.<!-- more --></p>
+
+<h2>What is Solr?</h2>
+
+<p>Solr is a schema based (also with dynamics field support) search solution built upon Apache Lucene providing full-text searching capabilities, document processing, REST API to fetch results in various formats like XML or JSON, etc.  Solr allows us to process document indexing with multiple options regarding of how to treat text, how to tokenize it, convert (or not) to lowercase automatically, build distributed cluster, automatic duplicates document detection and so.</p>
+
+<h2>Setting up Solr</h2>
+
+<p>There are a lot of stuff about how to install Solr so i'm not going to cover it, just specific core options for this quick'n dirty solution. First thing to do is creating core config and data dir, in this case i created <em>/opt/solr/pdfosint/</em> and <em>/opt/solr/pdfosintdata/</em> to store config and document data respectively.</p>
+
+<p>To set schema up just create <em>/opt/solr/pdfosint/conf/schema.xml</em> file with following content:
+``` xml schema.xml content for pdfosint core
+&lt;?xml version="1.0" encoding="UTF-8" ?>
+<schema name="pastebincom" version="1.5">
+ <fields>      <br/>
+   <field name="id" type="uuid" indexed="true" stored="true" default="NEW" multiValued="false" />
+   <field name="text" type="text_general" indexed="true" stored="true"/>
+   <field name="timestamp" type="date" indexed="true" stored="true" default="NOW" multiValued="false"/>
+   <field name="_version_" type="long" indexed="true" stored="true"/>
+   <dynamicField name="attr_*" type="text_general" indexed="true" stored="true" multiValued="true"/>
+ </fields></p>
+
+<p> <types>
+   <fieldType name="string" class="solr.StrField" sortMissingLast="true" />
+   <fieldType name="long" class="solr.TrieLongField" precisionStep="0" positionIncrementGap="0"/>
+   <fieldType name="date" class="solr.TrieDateField" precisionStep="0" positionIncrementGap="0"/>  <br/>
+   <fieldType name="uuid" class="solr.UUIDField" indexed="true" />
+   <fieldType name="text_general" class="solr.TextField" positionIncrementGap="100"></p>
+
+<pre><code>  &lt;analyzer type="index"&gt;
+    &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
+    &lt;filter class="solr.LowerCaseFilterFactory"/&gt;
+  &lt;/analyzer&gt;
+  &lt;analyzer type="query"&gt;
+    &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
+    &lt;filter class="solr.LowerCaseFilterFactory"/&gt;
+  &lt;/analyzer&gt;
+&lt;/fieldType&gt;
+</code></pre>
+
+<p> </types>
+</schema></p>
+
+<p>```
+Just a quick review of config for schema.xml, i specified an id field to be unique (UUID), a text field to store text itself, timestamp to be setted to date when document is pushed into Solr, <em>version</em> to track index version (internal Solr use to replicate, and so) and a dynamic field named attr_* to store any no specified value in schema and provided by parser. At last, i specified how to treat indexing and querying, for tokenize i use whitespice (splice words based just on whitespace without caring about special punctuaction) and convert it to lowercase. If you want to know more about text processing i would recommend <a href="http://www.packtpub.com/python-text-processing-nltk-20-cookbook/book">Python Text Processing with NLTK 2.0 Cookbok</a> as an introduction, <a href="http://shop.oreilly.com/product/9780596516499.do">Natural Language Processing with Python</a> for a more in-depth usage (both Python based) and <a href="https://www.coursera.org/course/nlangp">Natural Language Processing</a> online course available in Coursera.</p>
+
+<p>Next step is notyfing Solr about new core, just adding to <em>/opt/solr/solr.xml/</em>
+``` xml new core for PDF indexing
+<cores></p>
+
+<pre><code>...
+&lt;core name="pdfosint" instanceDir="pdfosint"/&gt;
+</code></pre>
+
+<p></cores>
+<code>
+Now only left to provide Solr with binary document processing capabilities through a [request handler](http://wiki.apache.org/solr/SolrRequestHandler), in that case, only for *pdfosint* core. For this create */opt/solr/pdfosint/solrconfig.xml* (we can always copy provided example with Solr and modify when needed) and specify request handler:
+</code> xml setting up solr request handler for binary documents
+  <requestHandler name="/update/extract" class="org.apache.solr.handler.extraction.ExtractingRequestHandler" ></p>
+
+<pre><code>  &lt;lst name="defaults"&gt;
+      &lt;str name="fmap.content"&gt;text&lt;/str&gt;
+      &lt;str name="lowernames"&gt;true&lt;/str&gt;
+      &lt;str name="uprefix"&gt;attr_&lt;/str&gt;
+      &lt;str name="captureAttr"&gt;true&lt;/str&gt;
+  &lt;/lst&gt;
+</code></pre>
+
+<p>  </requestHandler>
+```
+A quick review of this, class could changed depending on version and classes names, fmap.content specify to index extracted text to a field called <em>text</em>, lowernames specify converting to lowercase all processed documents, uprefix specify how to handled field parsed and not provided in schema.xml (in that case use dynamic attribute with a suffix of <em>attr_</em>) and captureAttr to specify indexing parsed attributes into separate fields. To know more about ExtractingRequestHandler <a href="http://wiki.apache.org/solr/ExtractingRequestHandler">here</a>.<br/>
+Now we have to install required libraries to do binary parsing and indexing, for this, i have created <em>/opt/solr/extract/</em> and copied <em>solr-cell-4.2.0.jar</em> from <em>dist</em> directory inside of Solr distribution archive and also copied to the same folder everything from <em>contrib/extraction/lib/</em> again from distribution archive.</p>
+
+<p>At last, adding this line to <em>/opt/solr/pdfosint/solrconfix.xml</em> to specify from where load libraries:
+``` xml</p>
+
+<pre><code>...
+&lt;lib dir="/opt/solr/extract" regex=".*\.jar" /&gt;
+...
+</code></pre>
+
+<p>```
+To know more about this process and more recipes, i strongly recommend [Apache Solr 4 Cookbook] (http://www.packtpub.com/apache-solr-4-cookbook/book).</p>
+
+<h2>Indexing and digging data</h2>
+
+<p>Now we have a extracting and indexing handler at <em>http://localhost:8080/solr/pdfosint/update/extract/</em> so only rest to send PDF to Solr and analyze them. The easyiest way once downloaded (or maybe  fetched from a meterpreter session? }:) ) is sending them with curl to Solr:
+<code>bash
+$ for i in `ls /tmp/pdf/*.pdf`; do curl "http://localhost:8080/solr/pdfosint/update/extract/?commit=true" -F "myfile=@$i"; done;
+</code></p>
+
+<p>After a while, depending on several factors like machine specs and documents size, we should have an index like this:
+<img src="/images/upload/2013/03/solr_index.png"></p>
+
+<p>So now we try a query to find documents with phrase <em>"internal use only"</em> and bingo!:
+<img src="/images/upload/2013/03/solr_query.png"></p>
+
+<p>It's important to have in mind the fact that Solr split words and treat them before indexing when doing queries, to see how a phrase should be treated and indexed by Solr when submitted we can do an analysis with builtin interface:<br/>
+<img src="/images/upload/2013/03/solr_analysis.png"></p>
+
+<p>I hope you find it useful and give it a try, see you soon!</p>
 ]]></content>
   </entry>
   
