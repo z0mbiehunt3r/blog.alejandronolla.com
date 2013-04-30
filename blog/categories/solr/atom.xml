@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Category: solr | Alejandro Nolla - z0mbiehunt3r]]></title>
+  <title><![CDATA[Category: solr, | Alejandro Nolla - z0mbiehunt3r]]></title>
   <link href="http://blog.alejandronolla.com/blog/categories/solr/atom.xml" rel="self"/>
   <link href="http://blog.alejandronolla.com/"/>
-  <updated>2013-04-11T13:09:51+02:00</updated>
+  <updated>2013-04-30T14:41:52+02:00</updated>
   <id>http://blog.alejandronolla.com/</id>
   <author>
     <name><![CDATA[Alejandro Nolla]]></name>
@@ -14,41 +14,34 @@
 
   
   <entry>
-    <title type="html"><![CDATA[Indexing PDF for OSINT and pentesting]]></title>
-    <link href="http://blog.alejandronolla.com/2013/03/23/indexing-pdf-for-osint-and-pentesting/"/>
-    <updated>2013-03-23T10:26:00+01:00</updated>
-    <id>http://blog.alejandronolla.com/2013/03/23/indexing-pdf-for-osint-and-pentesting</id>
-    <content type="html"><![CDATA[<p>Most of us, when conducting OSINT tasks or gathering information for preparing a pentest, draw on Google hacking techniques like <strong>site:company.acme filetype:pdf "for internal use only"</strong> or something similar to search for potential sensitive information uploaded by mistake. Other times, a customer ask us to know if they have leaked in a negligence this kind of sensitive information and we proceed to make some google hacking fu. <br/>
-But, what happens if we don't want to make this queries against Google and, furthermore, follow links from search that could potentially leak referers? Sure we could download documents and review them manually in local but it's boring and time consuming. Here is where <a href="http://lucene.apache.org/solr/">Apache Solr</a> comes into play for processing documents and create index of them to give us almost real time searching capabilities.<!-- more --></p>
+    <title type="html"><![CDATA[solr: Improving queries performance]]></title>
+    <link href="http://blog.alejandronolla.com/2013/04/29/solr-improving-queries-performance/"/>
+    <updated>2013-04-29T20:29:00+02:00</updated>
+    <id>http://blog.alejandronolla.com/2013/04/29/solr-improving-queries-performance</id>
+    <content type="html"><![CDATA[<h2>Introduction</h2>
 
-<h2>What is Solr?</h2>
+<p>These days i'm messing around with an application that index thousands of documents per day and perform hundreds of queries per hour, so query performance is crucial. The main aim is to provide detection of URLs and IP addresses (want to play a bit? Take a look to <a href="http://blog.alejandronolla.com/2013/03/23/indexing-pdf-for-osint-and-pentesting/">a previous post</a>) but full-text searching capabilities is also desired althought less used, so i have given a try to improve performance and, specifically, query times.<!-- more --></p>
 
-<p>Solr is a schema based (also with dynamics field support) search solution built upon Apache Lucene providing full-text searching capabilities, document processing, REST API to fetch results in various formats like XML or JSON, etc.  Solr allows us to process document indexing with multiple options regarding of how to treat text, how to tokenize it, convert (or not) to lowercase automatically, build distributed cluster, automatic duplicates document detection and so.</p>
+<p>Actually the core' schema.xml it's something like this:
+``` xml initial schema.xml file
+&lt;?xml version="1.0" encoding="UTF-8"?>
+<schema name="example" version="1.5">
+  <fields></p>
 
-<h2>Setting up Solr</h2>
+<pre><code>&lt;field name="id" type="uuid" indexed="true" stored="true" default="NEW" multiValued="false" /&gt;
+&lt;field name="text" type="text_general" indexed="true" stored="true" multiValued="false"/&gt;
+&lt;field name="url" type="string" indexed="true" stored="true" multiValued="false" required="true"/&gt;
+&lt;field name="hash" type="string" indexed="true" required="true" stored="true" multiValued="false"/&gt;
+</code></pre>
 
-<p>There are a lot of stuff about how to install Solr so i'm not going to cover it, just specific core options for this quick'n dirty solution. First thing to do is creating core config and data dir, in this case i created <em>/opt/solr/pdfosint/</em> and <em>/opt/solr/pdfosintdata/</em> to store config and document data respectively.</p>
+<p>  </fields>
+  <uniqueKey>hash</uniqueKey>
+  <types></p>
 
-<p>To set schema up just create <em>/opt/solr/pdfosint/conf/schema.xml</em> file with following content:
-``` xml schema.xml content for pdfosint core
-&lt;?xml version="1.0" encoding="UTF-8" ?>
-<schema name="pastebincom" version="1.5">
- <fields>      <br/>
-   <field name="id" type="uuid" indexed="true" stored="true" default="NEW" multiValued="false" />
-   <field name="text" type="text_general" indexed="true" stored="true"/>
-   <field name="timestamp" type="date" indexed="true" stored="true" default="NOW" multiValued="false"/>
-   <field name="_version_" type="long" indexed="true" stored="true"/>
-   <dynamicField name="attr_*" type="text_general" indexed="true" stored="true" multiValued="true"/>
- </fields></p>
-
-<p> <types>
-   <fieldType name="string" class="solr.StrField" sortMissingLast="true" />
-   <fieldType name="long" class="solr.TrieLongField" precisionStep="0" positionIncrementGap="0"/>
-   <fieldType name="date" class="solr.TrieDateField" precisionStep="0" positionIncrementGap="0"/>  <br/>
-   <fieldType name="uuid" class="solr.UUIDField" indexed="true" />
-   <fieldType name="text_general" class="solr.TextField" positionIncrementGap="100"></p>
-
-<pre><code>  &lt;analyzer type="index"&gt;
+<pre><code>&lt;fieldType name="uuid" class="solr.UUIDField" indexed="true" /&gt;
+&lt;fieldType name="string" class="solr.StrField" sortMissingLast="true"/&gt;
+&lt;fieldType name="text_general" class="solr.TextField"&gt;
+  &lt;analyzer type="index"&gt;
     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
     &lt;filter class="solr.LowerCaseFilterFactory"/&gt;
   &lt;/analyzer&gt;
@@ -59,67 +52,248 @@ But, what happens if we don't want to make this queries against Google and, furt
 &lt;/fieldType&gt;
 </code></pre>
 
-<p> </types>
-</schema></p>
+<p>  </types>
+</schema>
+```<br/>
+As can be seen, it only indexes and store given text, url and hash (used for avoid dupes), converting case to lower and tokenizing by whitespaces. This means that a document with content "SPAM Visit blog.alejandronolla.com" will be tokenized to "['spam', 'visit', 'blog.alejandronolla.com']" so, if we want to search documents mentioning any subdomain of alejandronolla.com we would have to search something like "text:*alejandronolla.com" (it could vary based on decisions like looking for domains similar to alejandronolla.com.PHISINGSITE.com or just whatever.alejandronolla.com).</p>
 
-<p>```
-Just a quick review of config for schema.xml, i specified an id field to be unique (UUID), a text field to store text itself, timestamp to be setted to date when document is pushed into Solr, <em>version</em> to track index version (internal Solr use to replicate, and so) and a dynamic field named attr_* to store any no specified value in schema and provided by parser. At last, i specified how to treat indexing and querying, for tokenize i use whitespice (splice words based just on whitespace without caring about special punctuaction) and convert it to lowercase. If you want to know more about text processing i would recommend <a href="http://www.packtpub.com/python-text-processing-nltk-20-cookbook/book">Python Text Processing with NLTK 2.0 Cookbok</a> as an introduction, <a href="http://shop.oreilly.com/product/9780596516499.do">Natural Language Processing with Python</a> for a more in-depth usage (both Python based) and <a href="https://www.coursera.org/course/nlangp">Natural Language Processing</a> online course available in Coursera.</p>
+<p>This kind of queries, using leading/trailing wildcars are really expensive for solr because it can't use just indexed tokens but perform some walking up to "n" characters more.</p>
 
-<p>Next step is notyfing Solr about new core, just adding to <em>/opt/solr/solr.xml/</em>
-``` xml new core for PDF indexing
-<cores></p>
+<h2>Avoiding solr heap space problems</h2>
 
-<pre><code>...
-&lt;core name="pdfosint" instanceDir="pdfosint"/&gt;
-</code></pre>
+<p>When dealing with a lot of documents concurrently probably you're going to face heap space problems sooner or later so i strongly recommend to increase RAM asigned to java virtual machine.</p>
 
-<p></cores>
-<code>
-Now only left to provide Solr with binary document processing capabilities through a [request handler](http://wiki.apache.org/solr/SolrRequestHandler), in that case, only for *pdfosint* core. For this create */opt/solr/pdfosint/solrconfig.xml* (we can always copy provided example with Solr and modify when needed) and specify request handler:
-</code> xml setting up solr request handler for binary documents
-  <requestHandler name="/update/extract" class="org.apache.solr.handler.extraction.ExtractingRequestHandler" ></p>
-
-<pre><code>  &lt;lst name="defaults"&gt;
-      &lt;str name="fmap.content"&gt;text&lt;/str&gt;
-      &lt;str name="lowernames"&gt;true&lt;/str&gt;
-      &lt;str name="uprefix"&gt;attr_&lt;/str&gt;
-      &lt;str name="captureAttr"&gt;true&lt;/str&gt;
-  &lt;/lst&gt;
-</code></pre>
-
-<p>  </requestHandler>
-```
-A quick review of this, class could changed depending on version and classes names, fmap.content specify to index extracted text to a field called <em>text</em>, lowernames specify converting to lowercase all processed documents, uprefix specify how to handled field parsed and not provided in schema.xml (in that case use dynamic attribute with a suffix of <em>attr_</em>) and captureAttr to specify indexing parsed attributes into separate fields. To know more about ExtractingRequestHandler <a href="http://wiki.apache.org/solr/ExtractingRequestHandler">here</a>.<br/>
-Now we have to install required libraries to do binary parsing and indexing, for this, i have created <em>/opt/solr/extract/</em> and copied <em>solr-cell-4.2.0.jar</em> from <em>dist</em> directory inside of Solr distribution archive and also copied to the same folder everything from <em>contrib/extraction/lib/</em> again from distribution archive.</p>
-
-<p>At last, adding this line to <em>/opt/solr/pdfosint/solrconfix.xml</em> to specify from where load libraries:
-``` xml</p>
-
-<pre><code>...
-&lt;lib dir="/opt/solr/extract" regex=".*\.jar" /&gt;
-...
-</code></pre>
-
-<p>```
-To know more about this process and more recipes, i strongly recommend [Apache Solr 4 Cookbook] (http://www.packtpub.com/apache-solr-4-cookbook/book).</p>
-
-<h2>Indexing and digging data</h2>
-
-<p>Now we have a extracting and indexing handler at <em>http://localhost:8080/solr/pdfosint/update/extract/</em> so only rest to send PDF to Solr and analyze them. The easyiest way once downloaded (or maybe  fetched from a meterpreter session? }:) ) is sending them with curl to Solr:
-<code>bash
-$ for i in `ls /tmp/pdf/*.pdf`; do curl "http://localhost:8080/solr/pdfosint/update/extract/?commit=true" -F "myfile=@$i"; done;
+<p>In this case i use Tomcat to serve solr, so i needed to modify JAVA_OPTS in catalina.sh (stored at <em>"/usr/share/tomcat7/bin/catalina.sh"</em>):
+<code>bash Setting up values for RAM usage
+if [ -z "$LOGGING_MANAGER" ]; then
+  JAVA_OPTS="$JAVA_OPTS -Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager -Xms2048m -Xmx16384m"
+else
+  JAVA_OPTS="$JAVA_OPTS $LOGGING_MANAGER -Xms2048m -Xmx16384m"
+fi
 </code></p>
 
-<p>After a while, depending on several factors like machine specs and documents size, we should have an index like this:
-<img src="/images/upload/2013/03/solr_index.png"></p>
+<p>Adding <em>"-Xms2048m -Xmx16384m"</em> we specify tomcat to preallocate at least 2048MB and maximum of 16384MB for heap space for avoiding heap space problems (in my tests i almost used about 2GB indexing about 300k documents in two differents cores, so there is plenty of RAM left yet):<br/>
+<img src="/images/upload/2013/04/jvm.png"></p>
 
-<p>So now we try a query to find documents with phrase <em>"internal use only"</em> and bingo!:
-<img src="/images/upload/2013/03/solr_query.png"></p>
+<h2>Handling thousand of concurrent connections with Tomcat</h2>
 
-<p>It's important to have in mind the fact that Solr split words and treat them before indexing when doing queries, to see how a phrase should be treated and indexed by Solr when submitted we can do an analysis with builtin interface:<br/>
-<img src="/images/upload/2013/03/solr_analysis.png"></p>
+<p>We have to set some configuration at <em>"/etc/tomcat6/server.xml"</em>:<br/>
+``` xml</p>
 
-<p>I hope you find it useful and give it a try, see you soon!</p>
+<pre><code>&lt;Connector port="8080" protocol="HTTP/1.1" 
+           connectionTimeout="20000" 
+           URIEncoding="UTF-8"
+           redirectPort="8443"
+           maxThreads="10000"/&gt;
+</code></pre>
+
+<p>```<br/>
+I have set up maxThreads to 10000 because i want to index documents through API REST with a python script using async HTTP requests to avoid loosing too much time indexing data (and i'm almost sure bottleneck here is python and not solr).</p>
+
+<h2>First improvement: Separate the grain from the chaff</h2>
+
+<p>As previously said, most of the queries looks for domains and IP addresses through full document's content, causing really heavy queries (and performance problems), so the first action i took was to create a new fields just with "domains look's like" string and IP addresses to tie down queries just to potentially valuable info.</p>
+
+<p>To extract domains, emails and similar strings solr already have a really powerful tokenizer called <a href="http://wiki.apache.org/solr/AnalyzersTokenizersTokenFilters#solr.UAX29URLEmailTokenizerFactory">solr.UAX29URLEmailTokenizerFactory</a>, so we only need to tell solr to index given document text using this tokenizer in another field.</p>
+
+<p>To specify solr which and where field we want to copy we have to create two new fields and specify source and destination fields:<br/>
+``` xml New copied fields at schema.xml
+  <fields></p>
+
+<pre><code>[...]
+&lt;field name="ip_addresses" type="ip_addresses" indexed="true" stored="false" multiValued="false"/&gt;
+&lt;field name="text_UAX29" type="text_UAX29" indexed="true" stored="false" multiValued="false"/&gt;
+</code></pre>
+
+<p>  </fields></p>
+
+<p>  <copyField source="text" dest="text_UAX29"/>
+  <copyField source="text" dest="ip_addresses"/></p>
+
+<p>  <types></p>
+
+<pre><code>[...]
+&lt;fieldType name="text_UAX29" class="solr.TextField" positionIncrementGap="100"&gt;
+  &lt;analyzer type="index"&gt;
+    &lt;tokenizer class="solr.UAX29URLEmailTokenizerFactory"/&gt;
+    &lt;filter class="solr.LowerCaseFilterFactory"/&gt;
+  &lt;/analyzer&gt;
+  &lt;analyzer type="query"&gt;
+    &lt;tokenizer class="solr.UAX29URLEmailTokenizerFactory"/&gt;
+    &lt;filter class="solr.LowerCaseFilterFactory"/&gt;
+  &lt;/analyzer&gt;
+&lt;/fieldType&gt;
+[...]
+&lt;/types&gt;
+</code></pre>
+
+<p>```<br/>
+We are going to use these fields only for searching, so we specify to index but not store (we already have full document content in "text" field) It's important to have in mind the fact that solr copy fields <a href="http://wiki.apache.org/solr/SchemaXml#Copy_Fields">before</a> doing any kind of processing to document.</p>
+
+<p>If you have noticed it, we specified an unespecified field type called "ip_addresses", and we are going to use <a href="http://wiki.apache.org/solr/AnalyzersTokenizersTokenFilters#solr.PatternTokenizerFactory">solr.PatternTokenizerFactory</a> to make a regex for extracting IP addresses and CIDR network ranges (like 192.168.1.0/16)<br/>
+``` xml
+  <types></p>
+
+<pre><code>[...]
+&lt;fieldType name="ip_addresses" class="solr.TextField"&gt;
+  &lt;analyzer&gt;
+    &lt;tokenizer class="solr.PatternTokenizerFactory" pattern="(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/?\d{1,2})" group="1" /&gt;
+  &lt;/analyzer&gt;
+&lt;/fieldType&gt; 
+[...]
+&lt;/types&gt;
+</code></pre>
+
+<p>```<br/>
+It's a really simple regex and should be improved before using it in a production environment for example, to extract only certain IP addresses (not RFC1918, not bogus, quad-octet validated, and so on) or even implement your own tokenizer extending <a href="http://wiki.apache.org/solr/AnalyzersTokenizersTokenFilters">existing ones</a>, but will fit ok for our tests.</p>
+
+<p>Now we can change queries from "text:*alejandronolla.com" to "text_UAX29:*alejandronolla.com" to walk much smaller subset of data, improving queries in a huge way.</p>
+
+<h2>Second improvement: Don't waste resources in features not being used</h2>
+
+<p>Solr is a really powerful full-text search engine and, as such, it is able to perform several kind of analysis for indexed data in an automated way. Obviously those analysis need resources to be made so we are wasting CPU cycles and RAM if we are not going to use them.</p>
+
+<p>One of these features is related to solr capability for boosting some query results over others and is based on certain "weight". For example, two documents mentioning "solr" keyword just one time - one with a length of just few words and the other having several thousands - will have different relevances for solr engine, being more important the smallest one. This is because of term frequency-inverse document frequeny (usually refered as <a href="http://en.wikipedia.org/wiki/Tf%E2%80%93idf">tf-idf</a>) statistic approach, if same keyword appear same number of time it represents a bigger percentage of the entire document in the smallest one.</p>
+
+<p>Because we are not going to use this feature we can disable it and save some resources modifying schema.xml file:<br/>
+``` xml Avoiding some statistical analysis
+  <fields></p>
+
+<pre><code>[...]
+&lt;field name="text" type="text_general" indexed="true" stored="true" multiValued="false" omitNorms="true"/&gt;
+&lt;field name="url" type="string" indexed="true" stored="true" multiValued="false" required="true" omitNorms="true"/&gt;
+[...]
+&lt;field name="ip_addresses" type="ip_addresses" indexed="true" stored="false" multiValued="false" omitNorms="true"/&gt;
+&lt;field name="text_UAX29" type="text_UAX29" indexed="true" stored="false" multiValued="false" omitNorms="true"/&gt;
+[...]
+</code></pre>
+
+<p>  </fields>
+```<br/>
+By setting "omitNorms" to "true" we specify solr to not don't care about length normalization or index-time boosting, you can check the <a href="http://wiki.apache.org/solr/SchemaXml">wiki</a> for more information.</p>
+
+<p>Another feature we don't need now is the solr ability to find similar documents to given one (feature called <a href="http://wiki.apache.org/solr/MoreLikeThis">MoreLikeThis</a>). To do this we can take several approaches as compare tf-idf values or, more accurate way, represent each document as a vector (<a href="http://en.wikipedia.org/wiki/Vector_space_model">vector space model</a>) and find near ones (solr mix both).</p>
+
+<p>Because we are not going to use this feature we can set it off by specifying following field options:
+``` xml
+  <fields></p>
+
+<pre><code>[...]
+&lt;field name="text" type="text_general" indexed="true" stored="true" multiValued="false" omitNorms="true" termVectors="false" termsPositions="false" termOffsets="false"/&gt;
+&lt;field name="url" type="string" indexed="true" stored="true" multiValued="false" required="true" omitNorms="true" termVectors="false" termsPositions="false" termOffsets="false"/&gt;
+[...]
+&lt;field name="ip_addresses" type="ip_addresses" indexed="true" stored="false" multiValued="false" omitNorms="true" termVectors="false" termsPositions="false" termOffsets="false"/&gt;
+&lt;field name="text_UAX29" type="text_UAX29" indexed="true" stored="false" multiValued="false" omitNorms="true" termVectors="false" termsPositions="false" termOffsets="false"/&gt;
+[...]
+</code></pre>
+
+<p>  </fields>
+```<br/>
+I have disabled them with these options "<em>termVectors="false" termsPositions="false" termOffsets="false"</em>" and gain some performance boost.</p>
+
+<p>If you want to know which field options to use based on your application aim take a look to official <a href="http://wiki.apache.org/solr/FieldOptionsByUseCase">wiki</a>:<br/>
+<img src="/images/upload/2013/04/fieldoptionsbyusecase.png"></p>
+
+<h2>Third improvement: Avoid indexing stopwords</h2>
+
+<p>When doing natural lenguage processing the term "stopwords" is used to refer those words that should be removed before processing text because of their uselessness. For example, when indexing a document with content like "Visit me at blog.alejandronolla.com" we don't care about personal pronoun "me" and preposition "at" (<a href="http://en.wikipedia.org/wiki/Part-of-speech_tagging">take a look to part-of-speech tagging</a>) so less indexed words, less used resources.</p>
+
+<p>To avoid processing those words we need to specify solr where stopwords are located:<br/>
+``` xml Avoiding stopwords being processed
+  <fields></p>
+
+<pre><code>[...]
+&lt;fieldType name="text_general" class="solr.TextField"&gt;
+  &lt;analyzer type="index"&gt;
+    &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
+    &lt;filter class="solr.StopFilterFactory" ignoreCase="true" words="stopwords.txt" enablePositionIncrements="true" /&gt;
+    &lt;filter class="solr.LowerCaseFilterFactory"/&gt;
+  &lt;/analyzer&gt;
+  &lt;analyzer type="query"&gt;
+    &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
+    &lt;filter class="solr.StopFilterFactory" ignoreCase="true" words="stopwords.txt" enablePositionIncrements="true" /&gt;
+    &lt;filter class="solr.LowerCaseFilterFactory"/&gt;
+  &lt;/analyzer&gt;
+&lt;/fieldType&gt;
+[...]
+</code></pre>
+
+<p>  </fields>
+<code>  
+We need to have a file called *"stopwords.txt"* at our *"conf"* directory for specified core containing these words and we can find some stopwords for several languages in the example configuration provided with solr package at *"/PATH/TO/SOLR/CORE/conf/lang"*:  
+</code> bash Some English stopwords
+root@ph0b0s:/opt/solr/solr/conf/lang# tail stopwords_en.txt
+their
+then
+there
+these
+they
+this
+to
+was
+will
+with
+```<br/>
+Of course, we can also include as stop words common words that don't give us any useful information like dog, bread, ROI, APT and so on...</p>
+
+<h2>Fourth impromevent: Word stemming</h2>
+
+<p>Despite of haven't used stemming yet in solr environments it's possible to convert a given word to his morphological root through an <a href="http://wiki.apache.org/solr/AnalyzersTokenizersTokenFilters#Stemming">stemming</a> process:<br/>
+``` python Stemming word with python example</p>
+
+<blockquote><blockquote><blockquote><p>from nltk.stemmer.porter import PorterStemmer
+PorterStemmer().stem_word('documents')
+'document'
+```<br/>
+Because we "reduce" words to his root probably few of them, per document, will share stem and this will result in a smaller index and more performance booster.</p></blockquote></blockquote></blockquote>
+
+<h2>Fifth improvement: Don't ask the same two times</h2>
+
+<p>Depending on application data and workflow it could be really useful to cache "n" most common queries/filters/documents and avoid doing over and over the same query in a few minutes apart, i'm sorry but haven't played around too much with it, so to read more about this go to the <a href="http://wiki.apache.org/solr/SolrCaching">wiki</a>.</p>
+
+<h2>Results</h2>
+
+<p>After taking first two improvements actions did some performance test and comparisons, so here are some info for a "small" subset of about 300k documents:</p>
+
+<table border="1">
+    <tr>
+        <td></td>
+        <td align="right">Original schema</td>
+        <td align="right">Modified schema</td>
+    </tr>
+    <tr>
+        <td align="left">Indexing time: </td>
+        <td align="right">95 minutes</td>
+        <td align="right">101 mminutes</td>
+    </tr>
+    <tr>
+        <td align="left">Index size: </td>
+        <td align="right">555.12 MB</td>
+        <td align="right">789.8 MB</td>
+    </tr>
+    <tr>
+        <td align="left">Field being queried: </td>
+        <td align="right">text</td>
+        <td align="right">text_UAX29</td>
+    </tr>
+    <tr>
+        <td align="left">Worst query scenario: </td>
+        <td align="right">84766 milliseconds</td>
+        <td align="right">52417 milliseconds</td>
+    </tr>
+    <tr>
+        <td align="left">Worst query improvement: </td>
+        <td align="center">--</td>
+        <td align="right">38,2% faster</td>
+    </tr>
+</table>
+
+
+<p></p>
+
+<p>As shown in the above table, the "worst" query i'm now performing (dozens of logical operators and wildcards) will take about 38% time less per query hit and, in an application which performs hundreds of query per hour, it's a great improvement without disrupting normal functioning (looking for domains and IP addresses) and, in the other hand, it will take almost no more time to index and more than reasonable index size increment that worth it.</p>
+
+<p>Hope you liked it and can apply someway to your needs, see you soon!</p>
 ]]></content>
   </entry>
   

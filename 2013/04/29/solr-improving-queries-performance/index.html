@@ -1,0 +1,589 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>solr: Improving queries performance - Alejandro Nolla - z0mbiehunt3r</title>
+  <meta name="author" content="Alejandro Nolla">
+
+  
+  <meta name="description" content="Introduction These days i&#8217;m messing around with an application that index thousands of documents per day and perform hundreds of queries per &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://blog.alejandronolla.com/2013/04/29/solr-improving-queries-performance/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <link href="/atom.xml" rel="alternate" title="Alejandro Nolla - z0mbiehunt3r" type="application/atom+xml">
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-39408435-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body >
+	<div class="all">
+		<section class="sidebar align-center">
+			<header>
+				<a href="/">
+	<div class="profile_picture"></div>
+	<h1>Alejandro Nolla</h1>
+</a>
+<div class="slogan hide-mobile">
+</div>
+<div class="social">
+	<a href="http://twitter.com/z0mbiehunt3r">
+		<div class="button twitter">
+			<span class="icon-twitter"></span>
+		</div>
+	</a>
+	<a href="http://www.linkedin.com/in/alejandronollablanco">
+		<div class="button linkedin">
+			<span class="icon-linkedin"></span>
+		</div>
+	</a>
+	<a href="http://github.com/z0mbiehunt3r">
+		<div class="button github">
+			<span class="icon-github"></span>
+		</div>
+	</a>
+	<a href="mailto:alejandro.nolla@gmail.com">
+		<div class="button email">
+			<span class="icon-envelope"></span>
+		</div>
+	</a>
+	<a href="/atom.xml">
+		<div class="button rss">
+			<span class="icon-rss"></span>
+		</div>
+	</a>
+</div>
+
+			</header>
+		</section>
+		<section class="content">
+			<div class="wrapper">
+				<div>
+<article class="hentry" role="article">
+  <div class="title">
+    
+      <h1 class="entry-title">Solr: Improving Queries Performance</h1>
+    
+</div>
+
+<div class="info">
+  <i class="icon-calendar"></i> 
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-04-29T20:29:00+02:00" pubdate data-updated="true">2013-04-29</time> &nbsp;&nbsp;
+  
+  <i class="icon-comment-alt"></i> <a href="#disqus_thread">Comments</a>
+  
+</div>
+
+<div class="post">
+  
+  <div class="entry-content"><h2>Introduction</h2>
+
+<p>These days i&#8217;m messing around with an application that index thousands of documents per day and perform hundreds of queries per hour, so query performance is crucial. The main aim is to provide detection of URLs and IP addresses (want to play a bit? Take a look to <a href="http://blog.alejandronolla.com/2013/03/23/indexing-pdf-for-osint-and-pentesting/">a previous post</a>) but full-text searching capabilities is also desired althought less used, so i have given a try to improve performance and, specifically, query times.<!-- more --></p>
+
+<p>Actually the core&#8217; schema.xml it&#8217;s something like this:</p>
+
+<figure class='code'><figcaption><span>initial schema.xml file</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;</span>
+</span><span class='line'><span class="nt">&lt;schema</span> <span class="na">name=</span><span class="s">&quot;example&quot;</span> <span class="na">version=</span><span class="s">&quot;1.5&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;fields&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;field</span> <span class="na">name=</span><span class="s">&quot;id&quot;</span> <span class="na">type=</span><span class="s">&quot;uuid&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="na">stored=</span><span class="s">&quot;true&quot;</span> <span class="na">default=</span><span class="s">&quot;NEW&quot;</span> <span class="na">multiValued=</span><span class="s">&quot;false&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;field</span> <span class="na">name=</span><span class="s">&quot;text&quot;</span> <span class="na">type=</span><span class="s">&quot;text_general&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="na">stored=</span><span class="s">&quot;true&quot;</span> <span class="na">multiValued=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;field</span> <span class="na">name=</span><span class="s">&quot;url&quot;</span> <span class="na">type=</span><span class="s">&quot;string&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="na">stored=</span><span class="s">&quot;true&quot;</span> <span class="na">multiValued=</span><span class="s">&quot;false&quot;</span> <span class="na">required=</span><span class="s">&quot;true&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;field</span> <span class="na">name=</span><span class="s">&quot;hash&quot;</span> <span class="na">type=</span><span class="s">&quot;string&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="na">required=</span><span class="s">&quot;true&quot;</span> <span class="na">stored=</span><span class="s">&quot;true&quot;</span> <span class="na">multiValued=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/fields&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;uniqueKey&gt;</span>hash<span class="nt">&lt;/uniqueKey&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;types&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;fieldType</span> <span class="na">name=</span><span class="s">&quot;uuid&quot;</span> <span class="na">class=</span><span class="s">&quot;solr.UUIDField&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;fieldType</span> <span class="na">name=</span><span class="s">&quot;string&quot;</span> <span class="na">class=</span><span class="s">&quot;solr.StrField&quot;</span> <span class="na">sortMissingLast=</span><span class="s">&quot;true&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;fieldType</span> <span class="na">name=</span><span class="s">&quot;text_general&quot;</span> <span class="na">class=</span><span class="s">&quot;solr.TextField&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;analyzer</span> <span class="na">type=</span><span class="s">&quot;index&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;tokenizer</span> <span class="na">class=</span><span class="s">&quot;solr.WhitespaceTokenizerFactory&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;filter</span> <span class="na">class=</span><span class="s">&quot;solr.LowerCaseFilterFactory&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;/analyzer&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;analyzer</span> <span class="na">type=</span><span class="s">&quot;query&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;tokenizer</span> <span class="na">class=</span><span class="s">&quot;solr.WhitespaceTokenizerFactory&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;filter</span> <span class="na">class=</span><span class="s">&quot;solr.LowerCaseFilterFactory&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;/analyzer&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/fieldType&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/types&gt;</span>
+</span><span class='line'><span class="nt">&lt;/schema&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>
+As can be seen, it only indexes and store given text, url and hash (used for avoid dupes), converting case to lower and tokenizing by whitespaces. This means that a document with content &#8220;SPAM Visit blog.alejandronolla.com&#8221; will be tokenized to &#8220;[&#8216;spam&#8217;, &#8216;visit&#8217;, &#8216;blog.alejandronolla.com&#8217;]&#8221; so, if we want to search documents mentioning any subdomain of alejandronolla.com we would have to search something like &#8220;text:*alejandronolla.com&#8221; (it could vary based on decisions like looking for domains similar to alejandronolla.com.PHISINGSITE.com or just whatever.alejandronolla.com).</p>
+
+<p>This kind of queries, using leading/trailing wildcars are really expensive for solr because it can&#8217;t use just indexed tokens but perform some walking up to &#8220;n&#8221; characters more.</p>
+
+<h2>Avoiding solr heap space problems</h2>
+
+<p>When dealing with a lot of documents concurrently probably you&#8217;re going to face heap space problems sooner or later so i strongly recommend to increase RAM asigned to java virtual machine.</p>
+
+<p>In this case i use Tomcat to serve solr, so i needed to modify JAVA_OPTS in catalina.sh (stored at <em>&#8220;/usr/share/tomcat7/bin/catalina.sh&#8221;</em>):</p>
+
+<figure class='code'><figcaption><span>Setting up values for RAM usage</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="k">if</span> <span class="o">[</span> -z <span class="s2">&quot;$LOGGING_MANAGER&quot;</span> <span class="o">]</span>; <span class="k">then</span>
+</span><span class='line'><span class="k">  </span><span class="nv">JAVA_OPTS</span><span class="o">=</span><span class="s2">&quot;$JAVA_OPTS -Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager -Xms2048m -Xmx16384m&quot;</span>
+</span><span class='line'><span class="k">else</span>
+</span><span class='line'><span class="k">  </span><span class="nv">JAVA_OPTS</span><span class="o">=</span><span class="s2">&quot;$JAVA_OPTS $LOGGING_MANAGER -Xms2048m -Xmx16384m&quot;</span>
+</span><span class='line'><span class="k">fi</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Adding <em>&#8220;-Xms2048m -Xmx16384m&#8221;</em> we specify tomcat to preallocate at least 2048MB and maximum of 16384MB for heap space for avoiding heap space problems (in my tests i almost used about 2GB indexing about 300k documents in two differents cores, so there is plenty of RAM left yet):<br/>
+<img src="/images/upload/2013/04/jvm.png"></p>
+
+<h2>Handling thousand of concurrent connections with Tomcat</h2>
+
+<p>We have to set some configuration at <em>&#8220;/etc/tomcat6/server.xml&#8221;</em>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;Connector</span> <span class="na">port=</span><span class="s">&quot;8080&quot;</span> <span class="na">protocol=</span><span class="s">&quot;HTTP/1.1&quot;</span>
+</span><span class='line'>           <span class="na">connectionTimeout=</span><span class="s">&quot;20000&quot;</span>
+</span><span class='line'>           <span class="na">URIEncoding=</span><span class="s">&quot;UTF-8&quot;</span>
+</span><span class='line'>           <span class="na">redirectPort=</span><span class="s">&quot;8443&quot;</span>
+</span><span class='line'>           <span class="na">maxThreads=</span><span class="s">&quot;10000&quot;</span><span class="nt">/&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>
+I have set up maxThreads to 10000 because i want to index documents through API REST with a python script using async HTTP requests to avoid loosing too much time indexing data (and i&#8217;m almost sure bottleneck here is python and not solr).</p>
+
+<h2>First improvement: Separate the grain from the chaff</h2>
+
+<p>As previously said, most of the queries looks for domains and IP addresses through full document&#8217;s content, causing really heavy queries (and performance problems), so the first action i took was to create a new fields just with &#8220;domains look&#8217;s like&#8221; string and IP addresses to tie down queries just to potentially valuable info.</p>
+
+<p>To extract domains, emails and similar strings solr already have a really powerful tokenizer called <a href="http://wiki.apache.org/solr/AnalyzersTokenizersTokenFilters#solr.UAX29URLEmailTokenizerFactory">solr.UAX29URLEmailTokenizerFactory</a>, so we only need to tell solr to index given document text using this tokenizer in another field.</p>
+
+<p>To specify solr which and where field we want to copy we have to create two new fields and specify source and destination fields:</p>
+
+<figure class='code'><figcaption><span>New copied fields at schema.xml</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'>  <span class="nt">&lt;fields&gt;</span>
+</span><span class='line'>    [...]
+</span><span class='line'>    <span class="nt">&lt;field</span> <span class="na">name=</span><span class="s">&quot;ip_addresses&quot;</span> <span class="na">type=</span><span class="s">&quot;ip_addresses&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="na">stored=</span><span class="s">&quot;false&quot;</span> <span class="na">multiValued=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;field</span> <span class="na">name=</span><span class="s">&quot;text_UAX29&quot;</span> <span class="na">type=</span><span class="s">&quot;text_UAX29&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="na">stored=</span><span class="s">&quot;false&quot;</span> <span class="na">multiValued=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/fields&gt;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nt">&lt;copyField</span> <span class="na">source=</span><span class="s">&quot;text&quot;</span> <span class="na">dest=</span><span class="s">&quot;text_UAX29&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;copyField</span> <span class="na">source=</span><span class="s">&quot;text&quot;</span> <span class="na">dest=</span><span class="s">&quot;ip_addresses&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nt">&lt;types&gt;</span>
+</span><span class='line'>    [...]
+</span><span class='line'>    <span class="nt">&lt;fieldType</span> <span class="na">name=</span><span class="s">&quot;text_UAX29&quot;</span> <span class="na">class=</span><span class="s">&quot;solr.TextField&quot;</span> <span class="na">positionIncrementGap=</span><span class="s">&quot;100&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;analyzer</span> <span class="na">type=</span><span class="s">&quot;index&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;tokenizer</span> <span class="na">class=</span><span class="s">&quot;solr.UAX29URLEmailTokenizerFactory&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;filter</span> <span class="na">class=</span><span class="s">&quot;solr.LowerCaseFilterFactory&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;/analyzer&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;analyzer</span> <span class="na">type=</span><span class="s">&quot;query&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;tokenizer</span> <span class="na">class=</span><span class="s">&quot;solr.UAX29URLEmailTokenizerFactory&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;filter</span> <span class="na">class=</span><span class="s">&quot;solr.LowerCaseFilterFactory&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;/analyzer&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/fieldType&gt;</span>
+</span><span class='line'>    [...]
+</span><span class='line'>    <span class="nt">&lt;/types&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>
+We are going to use these fields only for searching, so we specify to index but not store (we already have full document content in &#8220;text&#8221; field) It&#8217;s important to have in mind the fact that solr copy fields <a href="http://wiki.apache.org/solr/SchemaXml#Copy_Fields">before</a> doing any kind of processing to document.</p>
+
+<p>If you have noticed it, we specified an unespecified field type called &#8220;ip_addresses&#8221;, and we are going to use <a href="http://wiki.apache.org/solr/AnalyzersTokenizersTokenFilters#solr.PatternTokenizerFactory">solr.PatternTokenizerFactory</a> to make a regex for extracting IP addresses and CIDR network ranges (like 192.168.1.0/16)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'>  <span class="nt">&lt;types&gt;</span>
+</span><span class='line'>    [...]
+</span><span class='line'>    <span class="nt">&lt;fieldType</span> <span class="na">name=</span><span class="s">&quot;ip_addresses&quot;</span> <span class="na">class=</span><span class="s">&quot;solr.TextField&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;analyzer&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;tokenizer</span> <span class="na">class=</span><span class="s">&quot;solr.PatternTokenizerFactory&quot;</span> <span class="na">pattern=</span><span class="s">&quot;(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/?\d{1,2})&quot;</span> <span class="na">group=</span><span class="s">&quot;1&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;/analyzer&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/fieldType&gt;</span>
+</span><span class='line'>    [...]
+</span><span class='line'>    <span class="nt">&lt;/types&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>
+It&#8217;s a really simple regex and should be improved before using it in a production environment for example, to extract only certain IP addresses (not RFC1918, not bogus, quad-octet validated, and so on) or even implement your own tokenizer extending <a href="http://wiki.apache.org/solr/AnalyzersTokenizersTokenFilters">existing ones</a>, but will fit ok for our tests.</p>
+
+<p>Now we can change queries from &#8220;text:*alejandronolla.com&#8221; to &#8220;text_UAX29:*alejandronolla.com&#8221; to walk much smaller subset of data, improving queries in a huge way.</p>
+
+<h2>Second improvement: Don&#8217;t waste resources in features not being used</h2>
+
+<p>Solr is a really powerful full-text search engine and, as such, it is able to perform several kind of analysis for indexed data in an automated way. Obviously those analysis need resources to be made so we are wasting CPU cycles and RAM if we are not going to use them.</p>
+
+<p>One of these features is related to solr capability for boosting some query results over others and is based on certain &#8220;weight&#8221;. For example, two documents mentioning &#8220;solr&#8221; keyword just one time - one with a length of just few words and the other having several thousands - will have different relevances for solr engine, being more important the smallest one. This is because of term frequency-inverse document frequeny (usually refered as <a href="http://en.wikipedia.org/wiki/Tf%E2%80%93idf">tf-idf</a>) statistic approach, if same keyword appear same number of time it represents a bigger percentage of the entire document in the smallest one.</p>
+
+<p>Because we are not going to use this feature we can disable it and save some resources modifying schema.xml file:</p>
+
+<figure class='code'><figcaption><span>Avoiding some statistical analysis</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'>  <span class="nt">&lt;fields&gt;</span>
+</span><span class='line'>    [...]
+</span><span class='line'>    <span class="nt">&lt;field</span> <span class="na">name=</span><span class="s">&quot;text&quot;</span> <span class="na">type=</span><span class="s">&quot;text_general&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="na">stored=</span><span class="s">&quot;true&quot;</span> <span class="na">multiValued=</span><span class="s">&quot;false&quot;</span> <span class="na">omitNorms=</span><span class="s">&quot;true&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;field</span> <span class="na">name=</span><span class="s">&quot;url&quot;</span> <span class="na">type=</span><span class="s">&quot;string&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="na">stored=</span><span class="s">&quot;true&quot;</span> <span class="na">multiValued=</span><span class="s">&quot;false&quot;</span> <span class="na">required=</span><span class="s">&quot;true&quot;</span> <span class="na">omitNorms=</span><span class="s">&quot;true&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    [...]
+</span><span class='line'>    <span class="nt">&lt;field</span> <span class="na">name=</span><span class="s">&quot;ip_addresses&quot;</span> <span class="na">type=</span><span class="s">&quot;ip_addresses&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="na">stored=</span><span class="s">&quot;false&quot;</span> <span class="na">multiValued=</span><span class="s">&quot;false&quot;</span> <span class="na">omitNorms=</span><span class="s">&quot;true&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;field</span> <span class="na">name=</span><span class="s">&quot;text_UAX29&quot;</span> <span class="na">type=</span><span class="s">&quot;text_UAX29&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="na">stored=</span><span class="s">&quot;false&quot;</span> <span class="na">multiValued=</span><span class="s">&quot;false&quot;</span> <span class="na">omitNorms=</span><span class="s">&quot;true&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    [...]
+</span><span class='line'>  <span class="nt">&lt;/fields&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>
+By setting &#8220;omitNorms&#8221; to &#8220;true&#8221; we specify solr to not don&#8217;t care about length normalization or index-time boosting, you can check the <a href="http://wiki.apache.org/solr/SchemaXml">wiki</a> for more information.</p>
+
+<p>Another feature we don&#8217;t need now is the solr ability to find similar documents to given one (feature called <a href="http://wiki.apache.org/solr/MoreLikeThis">MoreLikeThis</a>). To do this we can take several approaches as compare tf-idf values or, more accurate way, represent each document as a vector (<a href="http://en.wikipedia.org/wiki/Vector_space_model">vector space model</a>) and find near ones (solr mix both).</p>
+
+<p>Because we are not going to use this feature we can set it off by specifying following field options:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'>  <span class="nt">&lt;fields&gt;</span>
+</span><span class='line'>    [...]
+</span><span class='line'>    <span class="nt">&lt;field</span> <span class="na">name=</span><span class="s">&quot;text&quot;</span> <span class="na">type=</span><span class="s">&quot;text_general&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="na">stored=</span><span class="s">&quot;true&quot;</span> <span class="na">multiValued=</span><span class="s">&quot;false&quot;</span> <span class="na">omitNorms=</span><span class="s">&quot;true&quot;</span> <span class="na">termVectors=</span><span class="s">&quot;false&quot;</span> <span class="na">termsPositions=</span><span class="s">&quot;false&quot;</span> <span class="na">termOffsets=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;field</span> <span class="na">name=</span><span class="s">&quot;url&quot;</span> <span class="na">type=</span><span class="s">&quot;string&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="na">stored=</span><span class="s">&quot;true&quot;</span> <span class="na">multiValued=</span><span class="s">&quot;false&quot;</span> <span class="na">required=</span><span class="s">&quot;true&quot;</span> <span class="na">omitNorms=</span><span class="s">&quot;true&quot;</span> <span class="na">termVectors=</span><span class="s">&quot;false&quot;</span> <span class="na">termsPositions=</span><span class="s">&quot;false&quot;</span> <span class="na">termOffsets=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    [...]
+</span><span class='line'>    <span class="nt">&lt;field</span> <span class="na">name=</span><span class="s">&quot;ip_addresses&quot;</span> <span class="na">type=</span><span class="s">&quot;ip_addresses&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="na">stored=</span><span class="s">&quot;false&quot;</span> <span class="na">multiValued=</span><span class="s">&quot;false&quot;</span> <span class="na">omitNorms=</span><span class="s">&quot;true&quot;</span> <span class="na">termVectors=</span><span class="s">&quot;false&quot;</span> <span class="na">termsPositions=</span><span class="s">&quot;false&quot;</span> <span class="na">termOffsets=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;field</span> <span class="na">name=</span><span class="s">&quot;text_UAX29&quot;</span> <span class="na">type=</span><span class="s">&quot;text_UAX29&quot;</span> <span class="na">indexed=</span><span class="s">&quot;true&quot;</span> <span class="na">stored=</span><span class="s">&quot;false&quot;</span> <span class="na">multiValued=</span><span class="s">&quot;false&quot;</span> <span class="na">omitNorms=</span><span class="s">&quot;true&quot;</span> <span class="na">termVectors=</span><span class="s">&quot;false&quot;</span> <span class="na">termsPositions=</span><span class="s">&quot;false&quot;</span> <span class="na">termOffsets=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    [...]
+</span><span class='line'>  <span class="nt">&lt;/fields&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>
+I have disabled them with these options &#8221;<em>termVectors=&#8221;false&#8221; termsPositions=&#8221;false&#8221; termOffsets=&#8221;false&#8221;</em>&#8221; and gain some performance boost.</p>
+
+<p>If you want to know which field options to use based on your application aim take a look to official <a href="http://wiki.apache.org/solr/FieldOptionsByUseCase">wiki</a>:<br/>
+<img src="/images/upload/2013/04/fieldoptionsbyusecase.png"></p>
+
+<h2>Third improvement: Avoid indexing stopwords</h2>
+
+<p>When doing natural lenguage processing the term &#8220;stopwords&#8221; is used to refer those words that should be removed before processing text because of their uselessness. For example, when indexing a document with content like &#8220;Visit me at blog.alejandronolla.com&#8221; we don&#8217;t care about personal pronoun &#8220;me&#8221; and preposition &#8220;at&#8221; (<a href="http://en.wikipedia.org/wiki/Part-of-speech_tagging">take a look to part-of-speech tagging</a>) so less indexed words, less used resources.</p>
+
+<p>To avoid processing those words we need to specify solr where stopwords are located:</p>
+
+<figure class='code'><figcaption><span>Avoiding stopwords being processed</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'>  <span class="nt">&lt;fields&gt;</span>
+</span><span class='line'>    [...]
+</span><span class='line'>    <span class="nt">&lt;fieldType</span> <span class="na">name=</span><span class="s">&quot;text_general&quot;</span> <span class="na">class=</span><span class="s">&quot;solr.TextField&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;analyzer</span> <span class="na">type=</span><span class="s">&quot;index&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;tokenizer</span> <span class="na">class=</span><span class="s">&quot;solr.WhitespaceTokenizerFactory&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;filter</span> <span class="na">class=</span><span class="s">&quot;solr.StopFilterFactory&quot;</span> <span class="na">ignoreCase=</span><span class="s">&quot;true&quot;</span> <span class="na">words=</span><span class="s">&quot;stopwords.txt&quot;</span> <span class="na">enablePositionIncrements=</span><span class="s">&quot;true&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;filter</span> <span class="na">class=</span><span class="s">&quot;solr.LowerCaseFilterFactory&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;/analyzer&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;analyzer</span> <span class="na">type=</span><span class="s">&quot;query&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;tokenizer</span> <span class="na">class=</span><span class="s">&quot;solr.WhitespaceTokenizerFactory&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;filter</span> <span class="na">class=</span><span class="s">&quot;solr.StopFilterFactory&quot;</span> <span class="na">ignoreCase=</span><span class="s">&quot;true&quot;</span> <span class="na">words=</span><span class="s">&quot;stopwords.txt&quot;</span> <span class="na">enablePositionIncrements=</span><span class="s">&quot;true&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;filter</span> <span class="na">class=</span><span class="s">&quot;solr.LowerCaseFilterFactory&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;/analyzer&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/fieldType&gt;</span>
+</span><span class='line'>    [...]
+</span><span class='line'>  <span class="nt">&lt;/fields&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>
+We need to have a file called <em>&#8220;stopwords.txt&#8221;</em> at our <em>&#8220;conf&#8221;</em> directory for specified core containing these words and we can find some stopwords for several languages in the example configuration provided with solr package at <em>&#8220;/PATH/TO/SOLR/CORE/conf/lang&#8221;</em>:</p>
+
+<figure class='code'><figcaption><span>Some English stopwords</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>root@ph0b0s:/opt/solr/solr/conf/lang# tail stopwords_en.txt
+</span><span class='line'>their
+</span><span class='line'><span class="k">then</span>
+</span><span class='line'>there
+</span><span class='line'>these
+</span><span class='line'>they
+</span><span class='line'>this
+</span><span class='line'>to
+</span><span class='line'>was
+</span><span class='line'>will
+</span><span class='line'>with
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>
+Of course, we can also include as stop words common words that don&#8217;t give us any useful information like dog, bread, ROI, APT and so on&#8230;</p>
+
+<h2>Fourth impromevent: Word stemming</h2>
+
+<p>Despite of haven&#8217;t used stemming yet in solr environments it&#8217;s possible to convert a given word to his morphological root through an <a href="http://wiki.apache.org/solr/AnalyzersTokenizersTokenFilters#Stemming">stemming</a> process:</p>
+
+<figure class='code'><figcaption><span>Stemming word with python example</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span> <span class="nn">nltk.stemmer.porter</span> <span class="kn">import</span> <span class="n">PorterStemmer</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="n">PorterStemmer</span><span class="p">()</span><span class="o">.</span><span class="n">stem_word</span><span class="p">(</span><span class="s">&#39;documents&#39;</span><span class="p">)</span>
+</span><span class='line'><span class="s">&#39;document&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>
+Because we &#8220;reduce&#8221; words to his root probably few of them, per document, will share stem and this will result in a smaller index and more performance booster.</p>
+
+<h2>Fifth improvement: Don&#8217;t ask the same two times</h2>
+
+<p>Depending on application data and workflow it could be really useful to cache &#8220;n&#8221; most common queries/filters/documents and avoid doing over and over the same query in a few minutes apart, i&#8217;m sorry but haven&#8217;t played around too much with it, so to read more about this go to the <a href="http://wiki.apache.org/solr/SolrCaching">wiki</a>.</p>
+
+<h2>Results</h2>
+
+<p>After taking first two improvements actions did some performance test and comparisons, so here are some info for a &#8220;small&#8221; subset of about 300k documents:</p>
+
+<table border="1">
+    <tr>
+        <td></td>
+        <td align="right">Original schema</td>
+        <td align="right">Modified schema</td>
+    </tr>
+    <tr>
+        <td align="left">Indexing time: </td>
+        <td align="right">95 minutes</td>
+        <td align="right">101 mminutes</td>
+    </tr>
+    <tr>
+        <td align="left">Index size: </td>
+        <td align="right">555.12 MB</td>
+        <td align="right">789.8 MB</td>
+    </tr>
+    <tr>
+        <td align="left">Field being queried: </td>
+        <td align="right">text</td>
+        <td align="right">text_UAX29</td>
+    </tr>
+    <tr>
+        <td align="left">Worst query scenario: </td>
+        <td align="right">84766 milliseconds</td>
+        <td align="right">52417 milliseconds</td>
+    </tr>
+    <tr>
+        <td align="left">Worst query improvement: </td>
+        <td align="center">&#8211;</td>
+        <td align="right">38,2% faster</td>
+    </tr>
+</table>
+
+
+<p></p>
+
+<p>As shown in the above table, the &#8220;worst&#8221; query i&#8217;m now performing (dozens of logical operators and wildcards) will take about 38% time less per query hit and, in an application which performs hundreds of query per hour, it&#8217;s a great improvement without disrupting normal functioning (looking for domains and IP addresses) and, in the other hand, it will take almost no more time to index and more than reasonable index size increment that worth it.</p>
+
+<p>Hope you liked it and can apply someway to your needs, see you soon!</p>
+</div>
+  
+</div>
+
+  
+    <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://blog.alejandronolla.com/2013/04/29/solr-improving-queries-performance/" data-via="z0mbiehunt3r" data-counturl="http://blog.alejandronolla.com/2013/04/29/solr-improving-queries-performance/" >Tweet</a>
+  
+  
+  
+</div>
+
+  
+    <div class="post_paginator">
+    
+    
+      <a class="basic-alignment left" href="/2013/04/06/moloch-capturing-and-indexing-network-traffic-in-realtime/" title="Previous Post: Moloch: Capturing and indexing network traffic in realtime">&laquo; Moloch: Capturing and indexing network traffic in realtime</a>
+    
+  </div>
+</article>
+<hr class="clear-both" />
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+			</div>
+		</section>
+		<footer class="align-center">
+			<div class="license">
+	<a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US"><img alt="Creative Commons License" style="border-width:0" src="http://i.creativecommons.org/l/by-nc-sa/3.0/88x31.png" /></a>
+</div>
+<div class="powered-by">
+	Design by <a href="http://twitter.com/fmartingr">@fmartingr</a>
+</div>
+
+		</footer>
+	</div>
+<script src="/javascripts/site.js"></script>
+<script> updateSizes(); </script>
+
+
+<script type="text/javascript">
+      var disqus_shortname = 'browsingamongcollisions';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://blog.alejandronolla.com/2013/04/29/solr-improving-queries-performance/';
+        var disqus_url = 'http://blog.alejandronolla.com/2013/04/29/solr-improving-queries-performance/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
