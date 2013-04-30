@@ -4,7 +4,7 @@
   <title><![CDATA[Category: osint, | Alejandro Nolla - z0mbiehunt3r]]></title>
   <link href="http://blog.alejandronolla.com/blog/categories/osint/atom.xml" rel="self"/>
   <link href="http://blog.alejandronolla.com/"/>
-  <updated>2013-04-30T14:41:52+02:00</updated>
+  <updated>2013-04-30T14:43:47+02:00</updated>
   <id>http://blog.alejandronolla.com/</id>
   <author>
     <name><![CDATA[Alejandro Nolla]]></name>
@@ -20,7 +20,7 @@
     <id>http://blog.alejandronolla.com/2013/04/29/solr-improving-queries-performance</id>
     <content type="html"><![CDATA[<h2>Introduction</h2>
 
-<p>These days i'm messing around with an application that index thousands of documents per day and perform hundreds of queries per hour, so query performance is crucial. The main aim is to provide detection of URLs and IP addresses (want to play a bit? Take a look to <a href="http://blog.alejandronolla.com/2013/03/23/indexing-pdf-for-osint-and-pentesting/">a previous post</a>) but full-text searching capabilities is also desired althought less used, so i have given a try to improve performance and, specifically, query times.<!-- more --></p>
+<p>These days i'm messing around with an application that index thousands of documents per day and perform hundreds of queries per hour, so query performance is crucial. The main aim is to provide detection of URLs and IP addresses (want to play a bit? take a look to <a href="http://blog.alejandronolla.com/2013/03/23/indexing-pdf-for-osint-and-pentesting/">a previous post</a>) but full-text searching capabilities is also desired althought less used, so i have given a try to improve performance and, specifically, query times, and here is my tests results.<!-- more --></p>
 
 <p>Actually the core' schema.xml it's something like this:
 ``` xml initial schema.xml file
