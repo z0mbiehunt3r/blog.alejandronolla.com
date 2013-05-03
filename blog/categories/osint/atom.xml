@@ -4,7 +4,7 @@
   <title><![CDATA[Category: osint | Alejandro Nolla - z0mbiehunt3r]]></title>
   <link href="http://blog.alejandronolla.com/blog/categories/osint/atom.xml" rel="self"/>
   <link href="http://blog.alejandronolla.com/"/>
-  <updated>2013-04-30T16:38:02+02:00</updated>
+  <updated>2013-05-04T00:44:03+02:00</updated>
   <id>http://blog.alejandronolla.com/</id>
   <author>
     <name><![CDATA[Alejandro Nolla]]></name>
@@ -57,7 +57,7 @@
 ```<br/>
 As can be seen, it only indexes and store given text, url and hash (used for avoid dupes), converting case to lower and tokenizing by whitespaces. This means that a document with content "SPAM Visit blog.alejandronolla.com" will be tokenized to "['spam', 'visit', 'blog.alejandronolla.com']" so, if we want to search documents mentioning any subdomain of alejandronolla.com we would have to search something like "text:*alejandronolla.com" (it could vary based on decisions like looking for domains similar to alejandronolla.com.PHISINGSITE.com or just whatever.alejandronolla.com).</p>
 
-<p>This kind of queries, using leading/trailing wildcars are really expensive for solr because it can't use just indexed tokens but perform some walking up to "n" characters more.</p>
+<p>This kind of queries, using leading/trailing wildcars, are really expensive for solr because it can't use just indexed tokens but perform some walking up to "n" characters more.</p>
 
 <h2>Avoiding solr heap space problems</h2>
 
@@ -78,7 +78,7 @@ fi
 <h2>Handling thousand of concurrent connections with Tomcat</h2>
 
 <p>We have to set some configuration at <em>"/etc/tomcat6/server.xml"</em>:<br/>
-``` xml</p>
+``` xml Tomcat configuration</p>
 
 <pre><code>&lt;Connector port="8080" protocol="HTTP/1.1" 
            connectionTimeout="20000" 
@@ -130,8 +130,8 @@ I have set up maxThreads to 10000 because i want to index documents through API 
 <p>```<br/>
 We are going to use these fields only for searching, so we specify to index but not store (we already have full document content in "text" field) It's important to have in mind the fact that solr copy fields <a href="http://wiki.apache.org/solr/SchemaXml#Copy_Fields">before</a> doing any kind of processing to document.</p>
 
-<p>If you have noticed it, we specified an unespecified field type called "ip_addresses", and we are going to use <a href="http://wiki.apache.org/solr/AnalyzersTokenizersTokenFilters#solr.PatternTokenizerFactory">solr.PatternTokenizerFactory</a> to make a regex for extracting IP addresses and CIDR network ranges (like 192.168.1.0/16)<br/>
-``` xml
+<p>If you have noticed it, we specified an undeclared field type called "ip_addresses", and we are going to use <a href="http://wiki.apache.org/solr/AnalyzersTokenizersTokenFilters#solr.PatternTokenizerFactory">solr.PatternTokenizerFactory</a> to make a regex for extracting IP addresses and CIDR network ranges (like 192.168.1.0/16)<br/>
+``` xml Extracting IP addresses with regex
   <types></p>
 
 <pre><code>[...]
@@ -175,7 +175,7 @@ By setting "omitNorms" to "true" we specify solr to not don't care about length 
 <p>Another feature we don't need now is the solr ability to find similar documents to given one (feature called <a href="http://wiki.apache.org/solr/MoreLikeThis">MoreLikeThis</a>). To do this we can take several approaches as compare tf-idf values or, more accurate way, represent each document as a vector (<a href="http://en.wikipedia.org/wiki/Vector_space_model">vector space model</a>) and find near ones (solr mix both).</p>
 
 <p>Because we are not going to use this feature we can set it off by specifying following field options:
-``` xml
+``` xml Disabling vector space model at schema.xml
   <fields></p>
 
 <pre><code>[...]

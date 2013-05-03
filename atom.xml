@@ -4,7 +4,7 @@
   <title><![CDATA[Alejandro Nolla - z0mbiehunt3r]]></title>
   <link href="http://blog.alejandronolla.com/atom.xml" rel="self"/>
   <link href="http://blog.alejandronolla.com/"/>
-  <updated>2013-04-30T16:38:02+02:00</updated>
+  <updated>2013-05-04T00:44:03+02:00</updated>
   <id>http://blog.alejandronolla.com/</id>
   <author>
     <name><![CDATA[Alejandro Nolla]]></name>
@@ -78,7 +78,7 @@
 <p>
 As can be seen, it only indexes and store given text, url and hash (used for avoid dupes), converting case to lower and tokenizing by whitespaces. This means that a document with content &#8220;SPAM Visit blog.alejandronolla.com&#8221; will be tokenized to &#8220;[&#8216;spam&#8217;, &#8216;visit&#8217;, &#8216;blog.alejandronolla.com&#8217;]&#8221; so, if we want to search documents mentioning any subdomain of alejandronolla.com we would have to search something like &#8220;text:*alejandronolla.com&#8221; (it could vary based on decisions like looking for domains similar to alejandronolla.com.PHISINGSITE.com or just whatever.alejandronolla.com).</p>
 
-<p>This kind of queries, using leading/trailing wildcars are really expensive for solr because it can&#8217;t use just indexed tokens but perform some walking up to &#8220;n&#8221; characters more.</p>
+<p>This kind of queries, using leading/trailing wildcars, are really expensive for solr because it can&#8217;t use just indexed tokens but perform some walking up to &#8220;n&#8221; characters more.</p>
 
 <h2>Avoiding solr heap space problems</h2>
 
@@ -106,7 +106,7 @@ As can be seen, it only indexes and store given text, url and hash (used for avo
 
 <p>We have to set some configuration at <em>&#8220;/etc/tomcat6/server.xml&#8221;</em>:</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<figure class='code'><figcaption><span>Tomcat configuration</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
@@ -182,9 +182,9 @@ I have set up maxThreads to 10000 because i want to index documents through API 
 <p>
 We are going to use these fields only for searching, so we specify to index but not store (we already have full document content in &#8220;text&#8221; field) It&#8217;s important to have in mind the fact that solr copy fields <a href="http://wiki.apache.org/solr/SchemaXml#Copy_Fields">before</a> doing any kind of processing to document.</p>
 
-<p>If you have noticed it, we specified an unespecified field type called &#8220;ip_addresses&#8221;, and we are going to use <a href="http://wiki.apache.org/solr/AnalyzersTokenizersTokenFilters#solr.PatternTokenizerFactory">solr.PatternTokenizerFactory</a> to make a regex for extracting IP addresses and CIDR network ranges (like 192.168.1.0/16)</p>
+<p>If you have noticed it, we specified an undeclared field type called &#8220;ip_addresses&#8221;, and we are going to use <a href="http://wiki.apache.org/solr/AnalyzersTokenizersTokenFilters#solr.PatternTokenizerFactory">solr.PatternTokenizerFactory</a> to make a regex for extracting IP addresses and CIDR network ranges (like 192.168.1.0/16)</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<figure class='code'><figcaption><span>Extracting IP addresses with regex</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
@@ -246,7 +246,7 @@ By setting &#8220;omitNorms&#8221; to &#8220;true&#8221; we specify solr to not 
 
 <p>Because we are not going to use this feature we can set it off by specifying following field options:</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<figure class='code'><figcaption><span>Disabling vector space model at schema.xml</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
