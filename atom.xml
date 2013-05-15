@@ -4,7 +4,7 @@
   <title><![CDATA[Alejandro Nolla - z0mbiehunt3r]]></title>
   <link href="http://blog.alejandronolla.com/atom.xml" rel="self"/>
   <link href="http://blog.alejandronolla.com/"/>
-  <updated>2013-05-05T19:59:12+02:00</updated>
+  <updated>2013-05-15T16:52:41+02:00</updated>
   <id>http://blog.alejandronolla.com/</id>
   <author>
     <name><![CDATA[Alejandro Nolla]]></name>
@@ -12,6 +12,306 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Detecting text language with python and NLTK]]></title>
+    <link href="http://blog.alejandronolla.com/2013/05/15/detecting-language-with-python-and-nltk/"/>
+    <updated>2013-05-15T13:40:00+02:00</updated>
+    <id>http://blog.alejandronolla.com/2013/05/15/detecting-language-with-python-and-nltk</id>
+    <content type="html"><![CDATA[<h2>Introduction</h2>
+
+<p>Most of us are used to Internet search engines and social networks capabilities to show only data in certain language, for example, showing only results written in Spanish or English. To achieve that, indexed text must have been analized previously to &#8220;guess&#8221; the languange and store it together.</p>
+
+<p>There are several ways to do that; probably the most easy to do is a stopwords based approach. The term &#8220;stopword&#8221; is used in natural language processing to refer words which should be filtered out from text before doing any kind of processing, commonly because this words are little or nothing usefult at all when analyzing text. <!-- more --></p>
+
+<h2>How to do that?</h2>
+
+<p>Ok, so we have a text whose language we want to detect depending on stopwords being used in such text. First step is to &#8220;tokenize&#8221; - convert given text to a list of &#8220;words&#8221; or &#8220;tokens&#8221; - using an approach or another depending on our requeriments: should we keep contractions or, otherwise, should we split them? we need puntuactions or want to split them off? and so on.</p>
+
+<p>In this case we are going to split all punctuations into separate tokens:</p>
+
+<figure class='code'><figcaption><span>nltk &#8220;wordpunct_tokenize&#8221; tokenizer</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span> <span class="nn">nltk</span> <span class="kn">import</span> <span class="n">wordpunct_tokenize</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="n">wordpunct_tokenize</span><span class="p">(</span><span class="s">&quot;That&#39;s thirty minutes away. I&#39;ll be there in ten.&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="p">[</span><span class="s">&#39;That&#39;</span><span class="p">,</span> <span class="s">&quot;&#39;&quot;</span><span class="p">,</span> <span class="s">&#39;s&#39;</span><span class="p">,</span> <span class="s">&#39;thirty&#39;</span><span class="p">,</span> <span class="s">&#39;minutes&#39;</span><span class="p">,</span> <span class="s">&#39;away&#39;</span><span class="p">,</span> <span class="s">&#39;.&#39;</span><span class="p">,</span> <span class="s">&#39;I&#39;</span><span class="p">,</span> <span class="s">&quot;&#39;&quot;</span><span class="p">,</span> <span class="s">&#39;ll&#39;</span><span class="p">,</span> <span class="s">&#39;be&#39;</span><span class="p">,</span> <span class="s">&#39;there&#39;</span><span class="p">,</span> <span class="s">&#39;in&#39;</span><span class="p">,</span> <span class="s">&#39;ten&#39;</span><span class="p">,</span> <span class="s">&#39;.&#39;</span><span class="p">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As shown, the famous quote from Mr. Wolf has been splitted and now we have &#8220;clean&#8221; words to match against stopwords list.</p>
+
+<p>At this point we need stopwords for several languages and here is when <a href="http://nltk.org/index.html">NLTK</a> comes to handy:</p>
+
+<figure class='code'><figcaption><span>included languages in NLTK</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span> <span class="nn">nltk.corpus</span> <span class="kn">import</span> <span class="n">stopwords</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="n">stopwords</span><span class="o">.</span><span class="n">fileids</span><span class="p">()</span>
+</span><span class='line'><span class="p">[</span><span class="s">&#39;danish&#39;</span><span class="p">,</span> <span class="s">&#39;dutch&#39;</span><span class="p">,</span> <span class="s">&#39;english&#39;</span><span class="p">,</span> <span class="s">&#39;finnish&#39;</span><span class="p">,</span> <span class="s">&#39;french&#39;</span><span class="p">,</span> <span class="s">&#39;german&#39;</span><span class="p">,</span> <span class="s">&#39;hungarian&#39;</span><span class="p">,</span> <span class="s">&#39;italian&#39;</span><span class="p">,</span> <span class="s">&#39;norwegian&#39;</span><span class="p">,</span> <span class="s">&#39;portuguese&#39;</span><span class="p">,</span> <span class="s">&#39;russian&#39;</span><span class="p">,</span> <span class="s">&#39;spanish&#39;</span><span class="p">,</span> <span class="s">&#39;swedish&#39;</span><span class="p">,</span> <span class="s">&#39;turkish&#39;</span><span class="p">]</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="n">stopwords</span><span class="o">.</span><span class="n">words</span><span class="p">(</span><span class="s">&#39;english&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">:</span><span class="mi">10</span><span class="p">]</span>
+</span><span class='line'><span class="p">[</span><span class="s">&#39;i&#39;</span><span class="p">,</span> <span class="s">&#39;me&#39;</span><span class="p">,</span> <span class="s">&#39;my&#39;</span><span class="p">,</span> <span class="s">&#39;myself&#39;</span><span class="p">,</span> <span class="s">&#39;we&#39;</span><span class="p">,</span> <span class="s">&#39;our&#39;</span><span class="p">,</span> <span class="s">&#39;ours&#39;</span><span class="p">,</span> <span class="s">&#39;ourselves&#39;</span><span class="p">,</span> <span class="s">&#39;you&#39;</span><span class="p">,</span> <span class="s">&#39;your&#39;</span><span class="p">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we need to compute language probability depending on which stopwords are used:</p>
+
+<figure class='code'><figcaption><span>calculate languages ratios</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="n">languages_ratios</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="n">tokens</span> <span class="o">=</span> <span class="n">wordpunct_tokenize</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="n">words</span> <span class="o">=</span> <span class="p">[</span><span class="n">word</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">tokens</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="k">for</span> <span class="n">language</span> <span class="ow">in</span> <span class="n">stopwords</span><span class="o">.</span><span class="n">fileids</span><span class="p">():</span>
+</span><span class='line'><span class="o">...</span>    <span class="n">stopwords_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">stopwords</span><span class="o">.</span><span class="n">words</span><span class="p">(</span><span class="n">language</span><span class="p">))</span>
+</span><span class='line'><span class="o">...</span>    <span class="n">words_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+</span><span class='line'><span class="o">...</span>    <span class="n">common_elements</span> <span class="o">=</span> <span class="n">words_set</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">stopwords_set</span><span class="p">)</span>
+</span><span class='line'><span class="o">...</span>
+</span><span class='line'><span class="o">...</span>    <span class="n">languages_ratios</span><span class="p">[</span><span class="n">language</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">common_elements</span><span class="p">)</span> <span class="c"># language &quot;score&quot;</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="n">languages_ratios</span>
+</span><span class='line'><span class="p">{</span><span class="s">&#39;swedish&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&#39;danish&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&#39;hungarian&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s">&#39;finnish&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s">&#39;portuguese&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s">&#39;german&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&#39;dutch&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&#39;french&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&#39;spanish&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s">&#39;norwegian&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&#39;english&#39;</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s">&#39;russian&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s">&#39;turkish&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s">&#39;italian&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>First we tokenize using wordpunct_tokenize function and lowercase all splitted tokens, then we walk across nltk included languages and count how many unique stopwords are seen in analyzed text to put this in &#8220;language_ratios&#8221; dictionary.</p>
+
+<p>Finally, we only have to get the &#8220;key&#8221; with biggest &#8220;value&#8221;:</p>
+
+<figure class='code'><figcaption><span>get most rated language</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="n">most_rated_language</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">languages_ratios</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">languages_ratios</span><span class="o">.</span><span class="n">get</span><span class="p">)</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="n">most_rated_language</span>
+</span><span class='line'><span class="s">&#39;english&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So yes, it seems this approach works fine with well written texts - those who respect grammatical rules - (and not so small ones) and is really easy to implement.</p>
+
+<h2>Putting it all together</h2>
+
+<p>If we put all the explained above into a script we have something like this:</p>
+
+<figure class='code'><figcaption><span>langdetector.py</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/env python</span>
+</span><span class='line'><span class="c">#coding:utf-8</span>
+</span><span class='line'><span class="c"># Author: Alejandro Nolla - z0mbiehunt3r</span>
+</span><span class='line'><span class="c"># Purpose: Example for detecting language using a stopwords based approach</span>
+</span><span class='line'><span class="c"># Created: 15/05/13</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">sys</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">try</span><span class="p">:</span>
+</span><span class='line'>    <span class="kn">from</span> <span class="nn">nltk</span> <span class="kn">import</span> <span class="n">wordpunct_tokenize</span>
+</span><span class='line'>    <span class="kn">from</span> <span class="nn">nltk.corpus</span> <span class="kn">import</span> <span class="n">stopwords</span>
+</span><span class='line'><span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+</span><span class='line'>    <span class="k">print</span> <span class="s">&#39;[!] You need to install nltk (http://nltk.org/index.html)&#39;</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="c">#----------------------------------------------------------------------</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">_calculate_languages_ratios</span><span class="p">(</span><span class="n">text</span><span class="p">):</span>
+</span><span class='line'>    <span class="sd">&quot;&quot;&quot;</span>
+</span><span class='line'><span class="sd">    Calculate probability of given text to be written in several languages and</span>
+</span><span class='line'><span class="sd">    return a dictionary that looks like {&#39;french&#39;: 2, &#39;spanish&#39;: 4, &#39;english&#39;: 0}</span>
+</span><span class='line'><span class="sd">    </span>
+</span><span class='line'><span class="sd">    @param text: Text whose language want to be detected</span>
+</span><span class='line'><span class="sd">    @type text: str</span>
+</span><span class='line'><span class="sd">    </span>
+</span><span class='line'><span class="sd">    @return: Dictionary with languages and unique stopwords seen in analyzed text</span>
+</span><span class='line'><span class="sd">    @rtype: dict</span>
+</span><span class='line'><span class="sd">    &quot;&quot;&quot;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">languages_ratios</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="sd">&#39;&#39;&#39;</span>
+</span><span class='line'><span class="sd">    nltk.wordpunct_tokenize() splits all punctuations into separate tokens</span>
+</span><span class='line'><span class="sd">    </span>
+</span><span class='line'><span class="sd">    &gt;&gt;&gt; wordpunct_tokenize(&quot;That&#39;s thirty minutes away. I&#39;ll be there in ten.&quot;)</span>
+</span><span class='line'><span class="sd">    [&#39;That&#39;, &quot;&#39;&quot;, &#39;s&#39;, &#39;thirty&#39;, &#39;minutes&#39;, &#39;away&#39;, &#39;.&#39;, &#39;I&#39;, &quot;&#39;&quot;, &#39;ll&#39;, &#39;be&#39;, &#39;there&#39;, &#39;in&#39;, &#39;ten&#39;, &#39;.&#39;]</span>
+</span><span class='line'><span class="sd">    &#39;&#39;&#39;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">tokens</span> <span class="o">=</span> <span class="n">wordpunct_tokenize</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">words</span> <span class="o">=</span> <span class="p">[</span><span class="n">word</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">tokens</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c"># Compute per language included in nltk number of unique stopwords appearing in analyzed text</span>
+</span><span class='line'>    <span class="k">for</span> <span class="n">language</span> <span class="ow">in</span> <span class="n">stopwords</span><span class="o">.</span><span class="n">fileids</span><span class="p">():</span>
+</span><span class='line'>        <span class="n">stopwords_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">stopwords</span><span class="o">.</span><span class="n">words</span><span class="p">(</span><span class="n">language</span><span class="p">))</span>
+</span><span class='line'>        <span class="n">words_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">common_elements</span> <span class="o">=</span> <span class="n">words_set</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">stopwords_set</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">languages_ratios</span><span class="p">[</span><span class="n">language</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">common_elements</span><span class="p">)</span> <span class="c"># language &quot;score&quot;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">languages_ratios</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="c">#----------------------------------------------------------------------</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">detect_language</span><span class="p">(</span><span class="n">text</span><span class="p">):</span>
+</span><span class='line'>    <span class="sd">&quot;&quot;&quot;</span>
+</span><span class='line'><span class="sd">    Calculate probability of given text to be written in several languages and</span>
+</span><span class='line'><span class="sd">    return the highest scored.</span>
+</span><span class='line'><span class="sd">    </span>
+</span><span class='line'><span class="sd">    It uses a stopwords based approach, counting how many unique stopwords</span>
+</span><span class='line'><span class="sd">    are seen in analyzed text.</span>
+</span><span class='line'><span class="sd">    </span>
+</span><span class='line'><span class="sd">    @param text: Text whose language want to be detected</span>
+</span><span class='line'><span class="sd">    @type text: str</span>
+</span><span class='line'><span class="sd">    </span>
+</span><span class='line'><span class="sd">    @return: Most scored language guessed</span>
+</span><span class='line'><span class="sd">    @rtype: str</span>
+</span><span class='line'><span class="sd">    &quot;&quot;&quot;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">ratios</span> <span class="o">=</span> <span class="n">_calculate_languages_ratios</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">most_rated_language</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">ratios</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">ratios</span><span class="o">.</span><span class="n">get</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">most_rated_language</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="k">if</span> <span class="n">__name__</span><span class="o">==</span><span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">text</span> <span class="o">=</span> <span class="s">&#39;&#39;&#39;</span>
+</span><span class='line'><span class="s">    There&#39;s a passage I got memorized. Ezekiel 25:17. &quot;The path of the righteous man is beset on all sides</span><span class="se">\</span>
+</span><span class='line'><span class="s">    by the inequities of the selfish and the tyranny of evil men. Blessed is he who, in the name of charity</span><span class="se">\</span>
+</span><span class='line'><span class="s">    and good will, shepherds the weak through the valley of the darkness, for he is truly his brother&#39;s keeper</span><span class="se">\</span>
+</span><span class='line'><span class="s">    and the finder of lost children. And I will strike down upon thee with great vengeance and furious anger</span><span class="se">\</span>
+</span><span class='line'><span class="s">    those who attempt to poison and destroy My brothers. And you will know I am the Lord when I lay My vengeance</span><span class="se">\</span>
+</span><span class='line'><span class="s">    upon you.&quot; Now... I been sayin&#39; that shit for years. And if you ever heard it, that meant your ass. You&#39;d</span><span class="se">\</span>
+</span><span class='line'><span class="s">    be dead right now. I never gave much thought to what it meant. I just thought it was a cold-blooded thing</span><span class="se">\</span>
+</span><span class='line'><span class="s">    to say to a motherfucker before I popped a cap in his ass. But I saw some shit this mornin&#39; made me think</span><span class="se">\</span>
+</span><span class='line'><span class="s">    twice. See, now I&#39;m thinking: maybe it means you&#39;re the evil man. And I&#39;m the righteous man. And Mr.</span><span class="se">\</span>
+</span><span class='line'><span class="s">    9mm here... he&#39;s the shepherd protecting my righteous ass in the valley of darkness. Or it could mean</span><span class="se">\</span>
+</span><span class='line'><span class="s">    you&#39;re the righteous man and I&#39;m the shepherd and it&#39;s the world that&#39;s evil and selfish. And I&#39;d like</span><span class="se">\</span>
+</span><span class='line'><span class="s">    that. But that shit ain&#39;t the truth. The truth is you&#39;re the weak. And I&#39;m the tyranny of evil men.</span><span class="se">\</span>
+</span><span class='line'><span class="s">    But I&#39;m tryin&#39;, Ringo. I&#39;m tryin&#39; real hard to be the shepherd.</span>
+</span><span class='line'><span class="s">    &#39;&#39;&#39;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">language</span> <span class="o">=</span> <span class="n">detect_language</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">print</span> <span class="n">language</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>There are others ways to &#8220;guess&#8221; language from a given text like N-Gram-Based text categorization so will see it in, probably, next post.</p>
+
+<p>See you soon and, as always, hope you find it interesting and useful!</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[solr: Improving queries performance]]></title>
