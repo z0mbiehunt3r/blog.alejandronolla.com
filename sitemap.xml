@@ -21,15 +21,21 @@
         <lastmod>2013-05-05T19:43:25+02:00</lastmod>
     </url>
     <url>
+        <loc>
+            http://blog.alejandronolla.com/2013/05/15/detecting-text-language-with-python-and-nltk/
+        </loc>
+        <lastmod>2013-05-15T17:02:30+02:00</lastmod>
+    </url>
+    <url>
         <loc>http://blog.alejandronolla.com/robots.txt</loc>
         <lastmod>2013-03-28T22:38:31+01:00</lastmod>
     </url>
     <url>
         <loc>http://blog.alejandronolla.com/blog/archives/</loc>
-        <lastmod>2013-05-05T19:28:58+02:00</lastmod>
+        <lastmod>2013-05-15T17:02:30+02:00</lastmod>
     </url>
     <url>
         <loc>http://blog.alejandronolla.com/</loc>
-        <lastmod>2013-05-05T19:28:58+02:00</lastmod>
+        <lastmod>2013-05-15T17:02:30+02:00</lastmod>
     </url>
 </urlset>

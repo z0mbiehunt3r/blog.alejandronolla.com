@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: python | Alejandro Nolla - z0mbiehunt3r]]></title>
+  <link href="http://blog.alejandronolla.com/blog/categories/python/atom.xml" rel="self"/>
+  <link href="http://blog.alejandronolla.com/"/>
+  <updated>2013-05-15T17:03:00+02:00</updated>
+  <id>http://blog.alejandronolla.com/</id>
+  <author>
+    <name><![CDATA[Alejandro Nolla]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Detecting text language with python and NLTK]]></title>
+    <link href="http://blog.alejandronolla.com/2013/05/15/detecting-text-language-with-python-and-nltk/"/>
+    <updated>2013-05-15T13:40:00+02:00</updated>
+    <id>http://blog.alejandronolla.com/2013/05/15/detecting-text-language-with-python-and-nltk</id>
+    <content type="html"><![CDATA[<h2>Introduction</h2>
+
+<p>Most of us are used to Internet search engines and social networks capabilities to show only data in certain language, for example, showing only results written in Spanish or English. To achieve that, indexed text must have been analized previously to "guess" the languange and store it together.</p>
+
+<p>There are several ways to do that; probably the most easy to do is a stopwords based approach. The term "stopword" is used in natural language processing to refer words which should be filtered out from text before doing any kind of processing, commonly because this words are little or nothing usefult at all when analyzing text. <!-- more --></p>
+
+<h2>How to do that?</h2>
+
+<p>Ok, so we have a text whose language we want to detect depending on stopwords being used in such text. First step is to "tokenize" - convert given text to a list of "words" or "tokens" - using an approach or another depending on our requeriments: should we keep contractions or, otherwise, should we split them? we need puntuactions or want to split them off? and so on.</p>
+
+<p>In this case we are going to split all punctuations into separate tokens:
+``` python nltk "wordpunct_tokenize" tokenizer</p>
+
+<blockquote><blockquote><blockquote><p>from nltk import wordpunct_tokenize
+wordpunct_tokenize("That's thirty minutes away. I'll be there in ten.")
+['That', "'", 's', 'thirty', 'minutes', 'away', '.', 'I', "'", 'll', 'be', 'there', 'in', 'ten', '.']
+```</p></blockquote></blockquote></blockquote>
+
+<p>As shown, the famous quote from Mr. Wolf has been splitted and now we have "clean" words to match against stopwords list.</p>
+
+<p>At this point we need stopwords for several languages and here is when <a href="http://nltk.org/index.html">NLTK</a> comes to handy:
+``` python included languages in NLTK</p>
+
+<blockquote><blockquote><blockquote><p>from nltk.corpus import stopwords
+stopwords.fileids()
+['danish', 'dutch', 'english', 'finnish', 'french', 'german', 'hungarian', 'italian', 'norwegian', 'portuguese', 'russian', 'spanish', 'swedish', 'turkish']</p>
+
+<p>stopwords.words('english')[0:10]
+['i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your']
+```</p></blockquote></blockquote></blockquote>
+
+<p>Now we need to compute language probability depending on which stopwords are used:
+``` python calculate languages ratios</p>
+
+<blockquote><blockquote><blockquote><p>languages_ratios = {}</p>
+
+<p>tokens = wordpunct_tokenize(text)
+words = [word.lower() for word in tokens]</p>
+
+<p>for language in stopwords.fileids():
+...     stopwords_set = set(stopwords.words(language))
+...     words_set = set(words)
+...     common_elements = words_set.intersection(stopwords_set)
+...
+...     languages_ratios[language] = len(common_elements) # language "score"</p>
+
+<p>languages_ratios
+{'swedish': 1, 'danish': 1, 'hungarian': 2, 'finnish': 0, 'portuguese': 0, 'german': 1, 'dutch': 1, 'french': 1, 'spanish': 0, 'norwegian': 1, 'english': 6, 'russian': 0, 'turkish': 0, 'italian': 2}
+```</p></blockquote></blockquote></blockquote>
+
+<p>First we tokenize using wordpunct_tokenize function and lowercase all splitted tokens, then we walk across nltk included languages and count how many unique stopwords are seen in analyzed text to put this in "language_ratios" dictionary.</p>
+
+<p>Finally, we only have to get the "key" with biggest "value":
+``` python get most rated language</p>
+
+<blockquote><blockquote><blockquote><p>most_rated_language = max(languages_ratios, key=languages_ratios.get)
+most_rated_language
+'english'
+```</p></blockquote></blockquote></blockquote>
+
+<p>So yes, it seems this approach works fine with well written texts - those who respect grammatical rules - (and not so small ones) and is really easy to implement.</p>
+
+<h2>Putting it all together</h2>
+
+<p>If we put all the explained above into a script we have something like this:
+``` python langdetector.py</p>
+
+<h1>!/usr/bin/env python</h1>
+
+<h1>coding:utf-8</h1>
+
+<h1>Author: Alejandro Nolla - z0mbiehunt3r</h1>
+
+<h1>Purpose: Example for detecting language using a stopwords based approach</h1>
+
+<h1>Created: 15/05/13</h1>
+
+<p>import sys</p>
+
+<p>try:</p>
+
+<pre><code>from nltk import wordpunct_tokenize
+from nltk.corpus import stopwords
+</code></pre>
+
+<p>except ImportError:</p>
+
+<pre><code>print '[!] You need to install nltk (http://nltk.org/index.html)'
+</code></pre>
+
+<h1>----------------------------------------------------------------------</h1>
+
+<p>def _calculate_languages_ratios(text):</p>
+
+<pre><code>"""
+Calculate probability of given text to be written in several languages and
+return a dictionary that looks like {'french': 2, 'spanish': 4, 'english': 0}
+
+@param text: Text whose language want to be detected
+@type text: str
+
+@return: Dictionary with languages and unique stopwords seen in analyzed text
+@rtype: dict
+"""
+
+languages_ratios = {}
+
+'''
+nltk.wordpunct_tokenize() splits all punctuations into separate tokens
+
+&gt;&gt;&gt; wordpunct_tokenize("That's thirty minutes away. I'll be there in ten.")
+['That', "'", 's', 'thirty', 'minutes', 'away', '.', 'I', "'", 'll', 'be', 'there', 'in', 'ten', '.']
+'''
+
+tokens = wordpunct_tokenize(text)
+words = [word.lower() for word in tokens]
+
+# Compute per language included in nltk number of unique stopwords appearing in analyzed text
+for language in stopwords.fileids():
+    stopwords_set = set(stopwords.words(language))
+    words_set = set(words)
+    common_elements = words_set.intersection(stopwords_set)
+
+    languages_ratios[language] = len(common_elements) # language "score"
+
+return languages_ratios
+</code></pre>
+
+<h1>----------------------------------------------------------------------</h1>
+
+<p>def detect_language(text):</p>
+
+<pre><code>"""
+Calculate probability of given text to be written in several languages and
+return the highest scored.
+
+It uses a stopwords based approach, counting how many unique stopwords
+are seen in analyzed text.
+
+@param text: Text whose language want to be detected
+@type text: str
+
+@return: Most scored language guessed
+@rtype: str
+"""
+
+ratios = _calculate_languages_ratios(text)
+
+most_rated_language = max(ratios, key=ratios.get)
+
+return most_rated_language
+</code></pre>
+
+<p>if <strong>name</strong>=='<strong>main</strong>':</p>
+
+<pre><code>text = '''
+There's a passage I got memorized. Ezekiel 25:17. "The path of the righteous man is beset on all sides\
+by the inequities of the selfish and the tyranny of evil men. Blessed is he who, in the name of charity\
+and good will, shepherds the weak through the valley of the darkness, for he is truly his brother's keeper\
+and the finder of lost children. And I will strike down upon thee with great vengeance and furious anger\
+those who attempt to poison and destroy My brothers. And you will know I am the Lord when I lay My vengeance\
+upon you." Now... I been sayin' that shit for years. And if you ever heard it, that meant your ass. You'd\
+be dead right now. I never gave much thought to what it meant. I just thought it was a cold-blooded thing\
+to say to a motherfucker before I popped a cap in his ass. But I saw some shit this mornin' made me think\
+twice. See, now I'm thinking: maybe it means you're the evil man. And I'm the righteous man. And Mr.\
+9mm here... he's the shepherd protecting my righteous ass in the valley of darkness. Or it could mean\
+you're the righteous man and I'm the shepherd and it's the world that's evil and selfish. And I'd like\
+that. But that shit ain't the truth. The truth is you're the weak. And I'm the tyranny of evil men.\
+But I'm tryin', Ringo. I'm tryin' real hard to be the shepherd.
+'''
+
+language = detect_language(text)
+
+print language
+</code></pre>
+
+<p>```</p>
+
+<p>There are others ways to "guess" language from a given text like N-Gram-Based text categorization so will see it in, probably, next post.</p>
+
+<p>See you soon and, as always, hope you find it interesting and useful!</p>
+]]></content>
+  </entry>
+  
+</feed>
