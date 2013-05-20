@@ -4,7 +4,7 @@
   <title><![CDATA[Alejandro Nolla - z0mbiehunt3r]]></title>
   <link href="http://blog.alejandronolla.com/atom.xml" rel="self"/>
   <link href="http://blog.alejandronolla.com/"/>
-  <updated>2013-05-15T18:21:00+02:00</updated>
+  <updated>2013-05-20T21:41:46+02:00</updated>
   <id>http://blog.alejandronolla.com/</id>
   <author>
     <name><![CDATA[Alejandro Nolla]]></name>
@@ -12,6 +12,153 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[N-Gram-Based Text Categorization: Categorizing text with python]]></title>
+    <link href="http://blog.alejandronolla.com/2013/05/20/n-gram-based-text-categorization-categorizing-text-with-python/"/>
+    <updated>2013-05-20T20:06:00+02:00</updated>
+    <id>http://blog.alejandronolla.com/2013/05/20/n-gram-based-text-categorization-categorizing-text-with-python</id>
+    <content type="html"><![CDATA[<h2>Introduction</h2>
+
+<p>As we saw in last post it&#8217;s really easy to detect text language using an analysis of stopwords. Another way to detect language, or when syntax rules are not being followed, is using N-Gram-Based text categorization (useful also for identifying the topic of the text and not just language) as William B. Cavnar and John M. Trenkle <a href="http://blog.alejandronolla.com/images/upload/2013/05/10.1.1.53.9367.pdf">wrote</a> in 1994 so i decided to mess around a bit and did <a href="https://github.com/z0mbiehunt3r/ngrambased-textcategorizer">ngrambased-textcategorizer</a> in python as a proof of concept. <!-- more --></p>
+
+<h2>How N-Gram-Based Text Categorization works</h2>
+
+<p>To perform N-Gram-Based Text Categorization we need to compute N-grams (with N=1 to 5) for each word - and apostrophes - found in the text, doing something like (being the word &#8220;TEXT&#8221;):</p>
+
+<ul>
+<li>bi-grams: _T, TE, EX, XT, T_</li>
+<li>tri-grams: _TE, TEX, EXT, XT_, T_ _</li>
+<li>quad-grams: _TEX, TEXT, EXT_, XT_ _, T_ _ _</li>
+</ul>
+
+
+<p>When every N-Gram has been computed we just keep top 300 - William and John observed this range as proper for language detection and starting around 300 for subject categorization - and save them as a &#8220;text category profile&#8221;. For categorize a text we only have to make same steps and calculate the &#8220;Out-Of-Place&#8221; measure against pre-computed profiles:<br/>
+<img src="http://blog.alejandronolla.com/images/upload/2013/05/outofplace_measure.png"></p>
+
+<p>Then, choose the nearest one - the one with lower distance - among them.</p>
+
+<h2>Implementing it in python</h2>
+
+<p>Procedure to create a text category profile is well explained at point &#8220;3.1 Generating N-Gram Frequency Profiles&#8221; and it&#8217;s really easy to implement it in python with the help of powerful <a href="http://nltk.org/index.html">nltk</a> toolkit.</p>
+
+<h3>First step: Split text into tokens (tokenization)</h3>
+
+<p>We need to tokenize text splitting by strings of only letters and apostrophes so we could use nltk <a href="http://nltk.org/api/nltk.tokenize.html?highlight=regexp#module-nltk.tokenize.regexp">RegexpTokenizer</a> for this:</p>
+
+<figure class='code'><figcaption><span>tokenizing by regular expression</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span> <span class="nn">nltk.tokenize</span> <span class="kn">import</span> <span class="n">RegexpTokenizer</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="n">tokenizer</span> <span class="o">=</span> <span class="n">RegexpTokenizer</span><span class="p">(</span><span class="s">&quot;[a-zA-Z&#39;`éèî]+&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="n">tokenizer</span><span class="o">.</span><span class="n">tokenize</span><span class="p">(</span><span class="s">&quot;Le temps est un grand maître, dit-on, le malheur est qu&#39;il tue ses élèves.&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="p">[</span><span class="s">&#39;Le&#39;</span><span class="p">,</span> <span class="s">&#39;temps&#39;</span><span class="p">,</span> <span class="s">&#39;est&#39;</span><span class="p">,</span> <span class="s">&#39;un&#39;</span><span class="p">,</span> <span class="s">&#39;grand&#39;</span><span class="p">,</span> <span class="s">&#39;ma</span><span class="se">\xc3\xae</span><span class="s">tre&#39;</span><span class="p">,</span> <span class="s">&#39;dit&#39;</span><span class="p">,</span> <span class="s">&#39;on&#39;</span><span class="p">,</span> <span class="s">&#39;le&#39;</span><span class="p">,</span> <span class="s">&#39;malheur&#39;</span><span class="p">,</span> <span class="s">&#39;est&#39;</span><span class="p">,</span> <span class="s">&quot;qu&#39;il&quot;</span><span class="p">,</span> <span class="s">&#39;tue&#39;</span><span class="p">,</span> <span class="s">&#39;ses&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="se">\xc3\xa9</span><span class="s">l</span><span class="se">\xc3\xa8</span><span class="s">ves&#39;</span><span class="p">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It&#8217;s just a proof of concept and should be tuned, but will be enough for now.</p>
+
+<h3>Second step: Generating N-grams for each token</h3>
+
+<p>Now it&#8217;s time to generate n-grams (with N=1 to 5) using blank as padding, again nltk has a <a href="http://nltk.org/api/nltk.html?highlight=ngrams#nltk.util.ngrams">function</a> for it:</p>
+
+<figure class='code'><figcaption><span>generating ngrams with nltk</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span> <span class="nn">nltk.util</span> <span class="kn">import</span> <span class="n">ngrams</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="n">generated_ngrams</span> <span class="o">=</span> <span class="n">ngrams</span><span class="p">(</span><span class="s">&#39;TEXT&#39;</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">pad_left</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">pad_right</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">pad_symbol</span><span class="o">=</span><span class="s">&#39; &#39;</span><span class="p">)</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="n">generated_ngrams</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span>
+</span><span class='line'><span class="p">(</span><span class="s">&#39;E&#39;</span><span class="p">,</span> <span class="s">&#39;X&#39;</span><span class="p">,</span> <span class="s">&#39;T&#39;</span><span class="p">,</span> <span class="s">&#39; &#39;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>ngram function will return a tuple so we need to join positions in ngrams itself:</p>
+
+<figure class='code'><figcaption><span>join splitted char into a ngram</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">generated_ngrams</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+</span><span class='line'><span class="s">&#39;EXT &#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Third step: Hashing into a table and countig each N-gram occurrences</h3>
+
+<p>The easiest way to do this is using a python dictionary, doing a sum when ngram has been seen before or creating a new key otherwise:</p>
+
+<figure class='code'><figcaption><span>counting ngrams occurrences</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">ngrams_statistics</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">for</span> <span class="n">ngram</span> <span class="ow">in</span> <span class="n">ngrams</span><span class="p">:</span>
+</span><span class='line'>  <span class="k">if</span> <span class="ow">not</span> <span class="n">ngrams_statistics</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="n">ngram</span><span class="p">):</span>
+</span><span class='line'>      <span class="n">ngrams_statistics</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">ngram</span><span class="p">:</span><span class="mi">1</span><span class="p">})</span>
+</span><span class='line'>  <span class="k">else</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">ngram_occurrences</span> <span class="o">=</span> <span class="n">ngrams_statistics</span><span class="p">[</span><span class="n">ngram</span><span class="p">]</span>
+</span><span class='line'>      <span class="n">ngrams_statistics</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">ngram</span><span class="p">:</span><span class="n">ngram_occurrences</span><span class="o">+</span><span class="mi">1</span><span class="p">})</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Fourth step: Sort in reverse order by number of occurrences</h3>
+
+<p>By last, we need to sort previously created dictionary in reverse order based on each ngram occurrences to keep just top 300 most repeated ngrams. Python dict&#8217;s can&#8217;t be sorted, so we need to transform it to a sorted list, we can easily achieve it using operator module:</p>
+
+<figure class='code'><figcaption><span>converting a dictionary to a sorted list</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="n">ngrams_statistics_sorted</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">ngrams_statistics</span><span class="o">.</span><span class="n">iteritems</span><span class="p">(),</span>\
+</span><span class='line'><span class="o">...</span>                             <span class="n">key</span><span class="o">=</span><span class="n">operator</span><span class="o">.</span><span class="n">itemgetter</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>\
+</span><span class='line'><span class="o">...</span>                             <span class="n">reverse</span><span class="o">=</span><span class="bp">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">:</span><span class="mi">300</span><span class="p">]</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="n">ngrams_statistics_sorted</span><span class="p">[</span><span class="mi">80</span><span class="p">:</span><span class="mi">90</span><span class="p">]</span>
+</span><span class='line'><span class="p">[(</span><span class="s">&#39;y&#39;</span><span class="p">,</span> <span class="mi">23994</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;  p&#39;</span><span class="p">,</span> <span class="mi">23941</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39; p&#39;</span><span class="p">,</span> <span class="mi">23941</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;   p&#39;</span><span class="p">,</span> <span class="mi">23941</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;    p&#39;</span><span class="p">,</span> <span class="mi">23941</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;b&#39;</span><span class="p">,</span> <span class="mi">23809</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;r &#39;</span><span class="p">,</span> <span class="mi">23783</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;r    &#39;</span><span class="p">,</span> <span class="mi">23783</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;r   &#39;</span><span class="p">,</span> <span class="mi">23783</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;r  &#39;</span><span class="p">,</span> <span class="mi">23783</span><span class="p">)]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now it only remains to save &#8220;ngrams_statistics_sorted&#8221; to a file as a &#8220;text category profile&#8221; or keep just ngrams without occurrences sum when comparing them against others profiles.</p>
+
+<h3>Comparing profiles</h3>
+
+<p>To categorize a text first we need to load pre-computed categories into a list/dict or something similar and, when loaded, walk it and calculate distance with each previously computed profile:</p>
+
+<figure class='code'><figcaption><span>computing ratios for each pre-computed profile</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="k">for</span> <span class="n">language</span><span class="p">,</span> <span class="n">ngrams_statistics</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_languages_statistics</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+</span><span class='line'><span class="o">...</span>    <span class="n">language_ngram_statistics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_ngram_occurrences</span><span class="p">(</span><span class="n">raw_text</span><span class="p">)</span>
+</span><span class='line'><span class="o">...</span>    <span class="n">distance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare_ngram_frequency_profiles</span><span class="p">(</span><span class="n">ngrams_statistics</span><span class="p">,</span> <span class="n">language_ngram_statistics</span><span class="p">)</span>
+</span><span class='line'><span class="o">...</span>    <span class="n">languages_ratios</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">language</span><span class="p">:</span><span class="n">distance</span><span class="p">})</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span>   
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="n">languages_ratios</span>
+</span><span class='line'><span class="p">{</span><span class="s">&#39;spanish&#39;</span><span class="p">:</span> <span class="mi">39960</span><span class="p">,</span> <span class="s">&#39;french&#39;</span><span class="p">:</span> <span class="mi">40398</span><span class="p">,</span> <span class="s">&#39;english&#39;</span><span class="p">:</span> <span class="mi">40418</span><span class="p">}</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="c"># extracting the one with lowest distance</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="nb">min</span><span class="p">(</span><span class="n">languages_ratios</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">languages_ratios</span><span class="o">.</span><span class="n">get</span><span class="p">)</span>
+</span><span class='line'><span class="s">&#39;spanish&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Conclusions</h2>
+
+<p>N-Gram-Based text categorization is probably not the &#8220;state-of-art&#8221; in text categorization - almost ten years old and a bit simple compared with newer ways of categorizing text - but it could be useful in some situations and as a basis to build upon and, what the heck, i learned doing it and had great time, so it totally worth it to me ;)</p>
+
+<p>See you soon!</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Detecting text language with python and NLTK]]></title>
