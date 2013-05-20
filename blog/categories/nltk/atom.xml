@@ -4,7 +4,7 @@
   <title><![CDATA[Category: nltk | Alejandro Nolla - z0mbiehunt3r]]></title>
   <link href="http://blog.alejandronolla.com/blog/categories/nltk/atom.xml" rel="self"/>
   <link href="http://blog.alejandronolla.com/"/>
-  <updated>2013-05-20T21:46:37+02:00</updated>
+  <updated>2013-05-20T21:48:24+02:00</updated>
   <id>http://blog.alejandronolla.com/</id>
   <author>
     <name><![CDATA[Alejandro Nolla]]></name>
@@ -33,8 +33,9 @@
 </ul>
 
 
-<p>When every N-Gram has been computed we just keep top 300 - William and John observed this range as proper for language detection and starting around 300 for subject categorization - and save them as a "text category profile". For categorize a text we only have to make same steps and calculate the "Out-Of-Place" measure against pre-computed profiles:<br/>
-<img src="/images/upload/2013/05/outofplace_measure.png"></p>
+<p>When every N-Gram has been computed we just keep top 300 - William and John observed this range as proper for language detection and starting around 300 for subject categorization - and save them as a "text category profile". For categorize a text we only have to make same steps and calculate the "Out-Of-Place" measure against pre-computed profiles:</p>
+
+<p><img src="/images/upload/2013/05/outofplace_measure.png"></p>
 
 <p>Then, choose the nearest one - the one with lower distance - among them.</p>
 
