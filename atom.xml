@@ -4,7 +4,7 @@
   <title><![CDATA[Alejandro Nolla - z0mbiehunt3r]]></title>
   <link href="http://blog.alejandronolla.com/atom.xml" rel="self"/>
   <link href="http://blog.alejandronolla.com/"/>
-  <updated>2013-05-28T23:01:34+02:00</updated>
+  <updated>2013-05-29T14:07:35+02:00</updated>
   <id>http://blog.alejandronolla.com/</id>
   <author>
     <name><![CDATA[Alejandro Nolla]]></name>
@@ -12,6 +12,185 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Moloch: Erasing data and restore database]]></title>
+    <link href="http://blog.alejandronolla.com/2013/05/29/moloch-erasing-data-and-restore-database/"/>
+    <updated>2013-05-29T13:31:00+02:00</updated>
+    <id>http://blog.alejandronolla.com/2013/05/29/moloch-erasing-data-and-restore-database</id>
+    <content type="html"><![CDATA[<p>This post is just a quick tip for restoring moloch state (database and pcap data) to have a superb fresh installed moloch system. I have received and email asking for this, so maybe it could be useful for someone. If you don&#8217;t know what moloch is take a look to his <a href="https://github.com/aol/moloch">github</a> and my previous <a href="http://blog.alejandronolla.com/2013/04/06/moloch-capturing-and-indexing-network-traffic-in-realtime/">post</a> to know more about this powerful network traffic capturer and indexer distributed system. <!-- more --></p>
+
+<h3>Restoring elasticsearch schema and indexed data</h3>
+
+<p>First, we need to erase indexed data and, optionally, also user data, to do this moloch includes a perl script for managing database:</p>
+
+<figure class='code'><figcaption><span>moloch database management options</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>~/moloch/db# ./db.pl
+</span><span class='line'>
+</span><span class='line'>Missing arguments
+</span><span class='line'>
+</span><span class='line'>./db.pl &lt;ESHOST:ESPORT&gt; &lt;<span class="nb">command</span>&gt; <span class="o">[</span>&lt;options&gt;<span class="o">]</span>
+</span><span class='line'>
+</span><span class='line'>Commands:
+</span><span class='line'>  init                  - Clear ALL elasticsearch moloch data and create schema
+</span><span class='line'>  wipe                  - Same as init, but leaves user database untouched
+</span><span class='line'>  upgrade               - Upgrade Moloch<span class="err">&#39;</span>s schema in elasticsearch from previous versions
+</span><span class='line'>  usersexport &lt;fn&gt;      - Save the users info to &lt;fn&gt;
+</span><span class='line'>  usersimport &lt;fn&gt;      - Load the users info from &lt;fn&gt;
+</span><span class='line'>  rotate &lt;<span class="nb">type</span>&gt; &lt;num&gt;   - Perform daily maintenance
+</span><span class='line'>       <span class="nb">type</span>             - Same as rotateIndex in ini <span class="nv">file</span> <span class="o">=</span> daily,weekly,monthly
+</span><span class='line'>       num              - number indexes to keep
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So, if we want to restore database state - users included - we have to do the following:</p>
+
+<figure class='code'><figcaption><span>restoring moloch&#8217;s elastic search data</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>~/moloch/db# ./db.pl ELASTICSEARCH_IP:9200 init
+</span><span class='line'>It is STRONGLY recommended that you stop ALL moloch captures and viewers before proceeding.
+</span><span class='line'>
+</span><span class='line'>There is 1 elastic search node, <span class="k">if </span>you expect more please fix first before proceeding.
+</span><span class='line'>
+</span><span class='line'>It appears this elastic search cluster already has moloch installed, this will delete ALL data in elastic search! <span class="o">(</span>It does not delete the pcap files on disk.<span class="o">)</span>
+</span><span class='line'>
+</span><span class='line'>Type <span class="s2">&quot;INIT&quot;</span> to <span class="k">continue</span> - <span class="k">do </span>you want to erase everything?
+</span><span class='line'>INIT
+</span><span class='line'>Erasing
+</span><span class='line'>Creating
+</span><span class='line'>Finished.  Have fun!
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now elastic search only have basic schema (with users database restored); to know more about what db.pl have done take a look to his source code:</p>
+
+<figure class='code'><figcaption><span>moloch database management source code</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+</pre></td><td class='code'><pre><code class='perl'><span class='line'><span class="k">if</span> <span class="p">(</span><span class="nv">$ARGV</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=~</span><span class="sr"> /(init|wipe)/</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="nv">$ARGV</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">eq</span> <span class="s">&quot;init&quot;</span> <span class="o">&amp;&amp;</span> <span class="nv">$</span><span class="nn">main::</span><span class="nv">versionNumber</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">print</span> <span class="s">&quot;It appears this elastic search cluster already has moloch installed, this will delete ALL data in elastic search! (It does not delete the pcap files on disk.)\n\n&quot;</span><span class="p">;</span>
+</span><span class='line'>        <span class="k">print</span> <span class="s">&quot;Type \&quot;INIT\&quot; to continue - do you want to erase everything?\n&quot;</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">waitFor</span><span class="p">(</span><span class="s">&quot;INIT&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span> <span class="k">elsif</span> <span class="p">(</span><span class="nv">$ARGV</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">eq</span> <span class="s">&quot;wipe&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">print</span> <span class="s">&quot;This will delete ALL session data in elastic search! (It does not delete the pcap files on disk or user info.)\n\n&quot;</span><span class="p">;</span>
+</span><span class='line'>        <span class="k">print</span> <span class="s">&quot;Type \&quot;WIPE\&quot; to continue - do you want to wipe everything?\n&quot;</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">waitFor</span><span class="p">(</span><span class="s">&quot;WIPE&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">print</span> <span class="s">&quot;Erasing\n&quot;</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">esDelete</span><span class="p">(</span><span class="s">&quot;/tags_v2&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">esDelete</span><span class="p">(</span><span class="s">&quot;/tags&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">esDelete</span><span class="p">(</span><span class="s">&quot;/sequence&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">esDelete</span><span class="p">(</span><span class="s">&quot;/files_v3&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">esDelete</span><span class="p">(</span><span class="s">&quot;/files_v2&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">esDelete</span><span class="p">(</span><span class="s">&quot;/files_v1&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">esDelete</span><span class="p">(</span><span class="s">&quot;/files&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">esDelete</span><span class="p">(</span><span class="s">&quot;/stats&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">esDelete</span><span class="p">(</span><span class="s">&quot;/dstats&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">esDelete</span><span class="p">(</span><span class="s">&quot;/dstats_v1&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">esDelete</span><span class="p">(</span><span class="s">&quot;/sessions*&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">esDelete</span><span class="p">(</span><span class="s">&quot;/template_1&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="nv">$ARGV</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">eq</span> <span class="s">&quot;init&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">esDelete</span><span class="p">(</span><span class="s">&quot;/users_v1&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">esDelete</span><span class="p">(</span><span class="s">&quot;/users_v2&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">esDelete</span><span class="p">(</span><span class="s">&quot;/users&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="n">esDelete</span><span class="p">(</span><span class="s">&quot;/tagger&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nb">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">print</span> <span class="s">&quot;Creating\n&quot;</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">tagsCreate</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">sequenceCreate</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">filesCreate</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">statsCreate</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">dstatsCreate</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">sessionsUpdate</span><span class="p">();</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="nv">$ARGV</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">eq</span> <span class="s">&quot;init&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">usersCreate</span><span class="p">();</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">print</span> <span class="s">&quot;Finished.  Have fun!\n&quot;</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Erasing previously captured pcap data</h3>
+
+<p>Done this only remains to remove pcap data from &#8220;raw&#8221; directory:</p>
+
+<figure class='code'><figcaption><span>erasing moloch pcap data</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>~/moloch/db/raw# rm *
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>That&#8217;s all folks, enjoy your fresh baked moloch!</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[N-Gram-Based Text Categorization: Categorizing text with python]]></title>

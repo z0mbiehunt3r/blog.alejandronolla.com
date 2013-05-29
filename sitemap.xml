@@ -14,7 +14,7 @@
         <loc>
             http://blog.alejandronolla.com/2013/04/06/moloch-capturing-and-indexing-network-traffic-in-realtime/
         </loc>
-        <lastmod>2013-05-05T19:43:25+02:00</lastmod>
+        <lastmod>2013-05-29T14:06:55+02:00</lastmod>
     </url>
     <url>
         <loc>http://blog.alejandronolla.com/2013/04/29/solr-improving-queries-performance/</loc>
@@ -33,15 +33,21 @@
         <lastmod>2013-05-20T21:49:12+02:00</lastmod>
     </url>
     <url>
+        <loc>
+            http://blog.alejandronolla.com/2013/05/29/moloch-erasing-data-and-restore-database/
+        </loc>
+        <lastmod>2013-05-29T14:06:50+02:00</lastmod>
+    </url>
+    <url>
         <loc>http://blog.alejandronolla.com/robots.txt</loc>
         <lastmod>2013-03-28T22:38:31+01:00</lastmod>
     </url>
     <url>
         <loc>http://blog.alejandronolla.com/blog/archives/</loc>
-        <lastmod>2013-05-28T22:56:00+02:00</lastmod>
+        <lastmod>2013-05-29T14:06:55+02:00</lastmod>
     </url>
     <url>
         <loc>http://blog.alejandronolla.com/</loc>
-        <lastmod>2013-05-28T22:56:00+02:00</lastmod>
+        <lastmod>2013-05-29T14:06:55+02:00</lastmod>
     </url>
 </urlset>

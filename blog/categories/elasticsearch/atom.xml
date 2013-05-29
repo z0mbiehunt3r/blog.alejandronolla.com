@@ -4,7 +4,7 @@
   <title><![CDATA[Category: elasticsearch | Alejandro Nolla - z0mbiehunt3r]]></title>
   <link href="http://blog.alejandronolla.com/blog/categories/elasticsearch/atom.xml" rel="self"/>
   <link href="http://blog.alejandronolla.com/"/>
-  <updated>2013-05-28T23:01:34+02:00</updated>
+  <updated>2013-05-29T14:07:35+02:00</updated>
   <id>http://blog.alejandronolla.com/</id>
   <author>
     <name><![CDATA[Alejandro Nolla]]></name>
@@ -12,6 +12,114 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Moloch: Erasing data and restore database]]></title>
+    <link href="http://blog.alejandronolla.com/2013/05/29/moloch-erasing-data-and-restore-database/"/>
+    <updated>2013-05-29T13:31:00+02:00</updated>
+    <id>http://blog.alejandronolla.com/2013/05/29/moloch-erasing-data-and-restore-database</id>
+    <content type="html"><![CDATA[<p>This post is just a quick tip for restoring moloch state (database and pcap data) to have a superb fresh installed moloch system. I have received and email asking for this, so maybe it could be useful for someone. If you don't know what moloch is take a look to his <a href="https://github.com/aol/moloch">github</a> and my previous <a href="http://blog.alejandronolla.com/2013/04/06/moloch-capturing-and-indexing-network-traffic-in-realtime/">post</a> to know more about this powerful network traffic capturer and indexer distributed system. <!-- more --></p>
+
+<h3>Restoring elasticsearch schema and indexed data</h3>
+
+<p>First, we need to erase indexed data and, optionally, also user data, to do this moloch includes a perl script for managing database:
+``` bash moloch database management options
+~/moloch/db# ./db.pl</p>
+
+<p>Missing arguments</p>
+
+<p>./db.pl &lt;ESHOST:ESPORT> <command> [<options>]</p>
+
+<p>Commands:
+  init                  - Clear ALL elasticsearch moloch data and create schema
+  wipe                  - Same as init, but leaves user database untouched
+  upgrade               - Upgrade Moloch's schema in elasticsearch from previous versions
+  usersexport <fn>      - Save the users info to <fn>
+  usersimport <fn>      - Load the users info from <fn>
+  rotate <type> <num>   - Perform daily maintenance</p>
+
+<pre><code>   type             - Same as rotateIndex in ini file = daily,weekly,monthly
+   num              - number indexes to keep
+</code></pre>
+
+<p>```</p>
+
+<p>So, if we want to restore database state - users included - we have to do the following:
+``` bash restoring moloch's elastic search data
+~/moloch/db# ./db.pl ELASTICSEARCH_IP:9200 init
+It is STRONGLY recommended that you stop ALL moloch captures and viewers before proceeding.</p>
+
+<p>There is 1 elastic search node, if you expect more please fix first before proceeding.</p>
+
+<p>It appears this elastic search cluster already has moloch installed, this will delete ALL data in elastic search! (It does not delete the pcap files on disk.)</p>
+
+<p>Type "INIT" to continue - do you want to erase everything?
+INIT
+Erasing
+Creating
+Finished.  Have fun!
+```</p>
+
+<p>Now elastic search only have basic schema (with users database restored); to know more about what db.pl have done take a look to his source code:
+``` perl moloch database management source code
+if ($ARGV[1] =~ /(init|wipe)/) {</p>
+
+<pre><code>if ($ARGV[1] eq "init" &amp;&amp; $main::versionNumber &gt;= 0) {
+    print "It appears this elastic search cluster already has moloch installed, this will delete ALL data in elastic search! (It does not delete the pcap files on disk.)\n\n";
+    print "Type \"INIT\" to continue - do you want to erase everything?\n";
+    waitFor("INIT");
+} elsif ($ARGV[1] eq "wipe") {
+    print "This will delete ALL session data in elastic search! (It does not delete the pcap files on disk or user info.)\n\n";
+    print "Type \"WIPE\" to continue - do you want to wipe everything?\n";
+    waitFor("WIPE");
+}
+print "Erasing\n";
+esDelete("/tags_v2", 1);
+esDelete("/tags", 1);
+esDelete("/sequence", 1);
+esDelete("/files_v3", 1);
+esDelete("/files_v2", 1);
+esDelete("/files_v1", 1);
+esDelete("/files", 1);
+esDelete("/stats", 1);
+esDelete("/dstats", 1);
+esDelete("/dstats_v1", 1);
+esDelete("/sessions*", 1);
+esDelete("/template_1", 1);
+if ($ARGV[1] eq "init") {
+    esDelete("/users_v1", 1);
+    esDelete("/users_v2", 1);
+    esDelete("/users", 1);
+}
+esDelete("/tagger", 1);
+
+sleep(1);
+
+print "Creating\n";
+tagsCreate();
+sequenceCreate();
+filesCreate();
+statsCreate();
+dstatsCreate();
+sessionsUpdate();
+if ($ARGV[1] eq "init") {
+    usersCreate();
+}
+print "Finished.  Have fun!\n";
+</code></pre>
+
+<p>```</p>
+
+<h3>Erasing previously captured pcap data</h3>
+
+<p>Done this only remains to remove pcap data from "raw" directory:
+<code>bash erasing moloch pcap data
+~/moloch/db/raw# rm *
+</code></p>
+
+<p>That's all folks, enjoy your fresh baked moloch!</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Moloch: Capturing and indexing network traffic in realtime]]></title>
