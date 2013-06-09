@@ -4,7 +4,7 @@
   <title><![CDATA[Category: osint | Alejandro Nolla - z0mbiehunt3r]]></title>
   <link href="http://blog.alejandronolla.com/blog/categories/osint/atom.xml" rel="self"/>
   <link href="http://blog.alejandronolla.com/"/>
-  <updated>2013-05-29T23:06:55+02:00</updated>
+  <updated>2013-06-09T15:32:36+02:00</updated>
   <id>http://blog.alejandronolla.com/</id>
   <author>
     <name><![CDATA[Alejandro Nolla]]></name>
@@ -137,7 +137,7 @@ We are going to use these fields only for searching, so we specify to index but 
 <pre><code>[...]
 &lt;fieldType name="ip_addresses" class="solr.TextField"&gt;
   &lt;analyzer&gt;
-    &lt;tokenizer class="solr.PatternTokenizerFactory" pattern="(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/?\d{1,2})" group="1" /&gt;
+    &lt;tokenizer class="solr.PatternTokenizerFactory" pattern="(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/?\d{1,2}?)" group="1" /&gt;
   &lt;/analyzer&gt;
 &lt;/fieldType&gt; 
 [...]
@@ -148,6 +148,24 @@ We are going to use these fields only for searching, so we specify to index but 
 It's a really simple regex and should be improved before using it in a production environment for example, to extract only certain IP addresses (not RFC1918, not bogus, quad-octet validated, and so on) or even implement your own tokenizer extending <a href="http://wiki.apache.org/solr/AnalyzersTokenizersTokenFilters">existing ones</a>, but will fit ok for our tests.</p>
 
 <p>Now we can change queries from "text:*alejandronolla.com" to "text_UAX29:*alejandronolla.com" to walk much smaller subset of data, improving queries in a huge way.</p>
+
+<h2>UPDATE:</h2>
+
+<p>I totally forgot to specify to filter out all tokens that are not email or url after tokenizing with UAX29 specification to just store emails and urls. To do this we need to set a <a href="http://lucene.apache.org/core/4_0_0/analyzers-common/org/apache/lucene/analysis/core/TypeTokenFilterFactory.html">token filter</a> at fieldType "text_UAX29":<br/>
+``` xml Leaving only URL and emails</p>
+
+<pre><code>&lt;fieldType name="text_UAX29" class="solr.TextField"&gt;
+  &lt;analyzer&gt;
+    [...]
+    &lt;filter class="solr.TypeTokenFilterFactory" types="allowedtypes.txt" enablePositionIncrements="true" useWhitelist="true"/&gt;
+  &lt;/analyzer&gt;
+&lt;/fieldType&gt;
+</code></pre>
+
+<p>```<br/>
+In "allowedtypes.txt" file we need to put &lt;EMAIL> and &lt;URL> (one per line) as allowed token type and we should change IP addresses tokenizer to make a small hack and return only IP addresses or extending <a href="http://lucene.apache.org/core/4_0_0/analyzers-common/org/apache/lucene/analysis/util/TokenFilterFactory.html">TokenFilterFactory</a> for filtering after tokenizing process.</p>
+
+<p>Really sorry and apologies for any inconveniences.</p>
 
 <h2>Second improvement: Don't waste resources in features not being used</h2>
 
