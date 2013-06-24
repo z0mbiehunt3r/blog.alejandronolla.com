@@ -4,7 +4,7 @@
   <title><![CDATA[Category: python | Alejandro Nolla - z0mbiehunt3r]]></title>
   <link href="http://blog.alejandronolla.com/blog/categories/python/atom.xml" rel="self"/>
   <link href="http://blog.alejandronolla.com/"/>
-  <updated>2013-06-24T15:01:26+02:00</updated>
+  <updated>2013-06-24T15:28:47+02:00</updated>
   <id>http://blog.alejandronolla.com/</id>
   <author>
     <name><![CDATA[Alejandro Nolla]]></name>
@@ -321,7 +321,7 @@ Received 1 packets, got 1 answers, remaining 0 packets</p>
 
 <p>So far we have seen how this attack works as well as (bad coded) programs being used in the wild to launch DDoS attacks from web panels (the so called DDoS booters). We have also seen how to replay the amplification attack with Scapy and analized a bit of this network traffic with Wireshark.</p>
 
-<p>At the next post we are going to see how to mitigate this kind of attack at the Quake 3 server - at aplication and network layer - side and also from the victim side being flooded. Also we are going to analyze it deeper with tshark to see potential ways to spot this attack and try to block it.</p>
+<p>At the next post we are going to see how to mitigate this kind of attack at the Quake 3 server - at application and network layer - side and also from the victim side being flooded. Also we are going to analyze it deeper with tshark to see potential ways to spot this attack and try to block it.</p>
 
 <p>See you at next post!</p>
 ]]></content>
