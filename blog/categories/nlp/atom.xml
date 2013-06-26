@@ -4,7 +4,7 @@
   <title><![CDATA[Category: nlp | Alejandro Nolla - z0mbiehunt3r]]></title>
   <link href="http://blog.alejandronolla.com/blog/categories/nlp/atom.xml" rel="self"/>
   <link href="http://blog.alejandronolla.com/"/>
-  <updated>2013-06-24T15:28:47+02:00</updated>
+  <updated>2013-06-26T22:45:16+02:00</updated>
   <id>http://blog.alejandronolla.com/</id>
   <author>
     <name><![CDATA[Alejandro Nolla]]></name>
@@ -504,17 +504,17 @@ By setting "omitNorms" to "true" we specify solr to not don't care about length 
   <fields></p>
 
 <pre><code>[...]
-&lt;field name="text" type="text_general" indexed="true" stored="true" multiValued="false" omitNorms="true" termVectors="false" termsPositions="false" termOffsets="false"/&gt;
-&lt;field name="url" type="string" indexed="true" stored="true" multiValued="false" required="true" omitNorms="true" termVectors="false" termsPositions="false" termOffsets="false"/&gt;
+&lt;field name="text" type="text_general" indexed="true" stored="true" multiValued="false" omitNorms="true" termVectors="false" termPositions="false" termOffsets="false"/&gt;
+&lt;field name="url" type="string" indexed="true" stored="true" multiValued="false" required="true" omitNorms="true" termVectors="false" termPositions="false" termOffsets="false"/&gt;
 [...]
-&lt;field name="ip_addresses" type="ip_addresses" indexed="true" stored="false" multiValued="false" omitNorms="true" termVectors="false" termsPositions="false" termOffsets="false"/&gt;
-&lt;field name="text_UAX29" type="text_UAX29" indexed="true" stored="false" multiValued="false" omitNorms="true" termVectors="false" termsPositions="false" termOffsets="false"/&gt;
+&lt;field name="ip_addresses" type="ip_addresses" indexed="true" stored="false" multiValued="false" omitNorms="true" termVectors="false" termPositions="false" termOffsets="false"/&gt;
+&lt;field name="text_UAX29" type="text_UAX29" indexed="true" stored="false" multiValued="false" omitNorms="true" termVectors="false" termPositions="false" termOffsets="false"/&gt;
 [...]
 </code></pre>
 
 <p>  </fields>
 ```<br/>
-I have disabled them with these options "<em>termVectors="false" termsPositions="false" termOffsets="false"</em>" and gain some performance boost.</p>
+I have disabled them with these options "<em>termVectors="false" termPositions="false" termOffsets="false"</em>" and gain some performance boost.</p>
 
 <p>If you want to know which field options to use based on your application aim take a look to official <a href="http://wiki.apache.org/solr/FieldOptionsByUseCase">wiki</a>:<br/>
 <img src="/images/upload/2013/04/fieldoptionsbyusecase.png"></p>
