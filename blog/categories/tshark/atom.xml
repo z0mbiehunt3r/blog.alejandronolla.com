@@ -4,7 +4,7 @@
   <title><![CDATA[Category: tshark | Alejandro Nolla - z0mbiehunt3r]]></title>
   <link href="http://blog.alejandronolla.com/blog/categories/tshark/atom.xml" rel="self"/>
   <link href="http://blog.alejandronolla.com/"/>
-  <updated>2013-06-26T22:45:16+02:00</updated>
+  <updated>2013-06-29T01:20:26+02:00</updated>
   <id>http://blog.alejandronolla.com/</id>
   <author>
     <name><![CDATA[Alejandro Nolla]]></name>
@@ -151,7 +151,7 @@ attack(params->victim_ip, rand() % 65534 + 1, params->list[i].ip, params->list[i
 {</p>
 
 <pre><code>/*
-When sending TCP/UDP packets/datagrams with raw sockets we need a pseudo header to calculate checksum value,
+When sending TCP/UDP segments/datagrams with raw sockets we need a pseudo header to calculate checksum value,
 not used in this case and probably forgot when ripping it from this SYN flooder
 https://gist.github.com/z0mbiehunt3r/5790220
 */

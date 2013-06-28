@@ -406,7 +406,7 @@
 </span><span class='line'><span class="kt">void</span> <span class="n">attack</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">srcip</span><span class="p">,</span> <span class="kt">int</span> <span class="n">srcport</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">destip</span><span class="p">,</span> <span class="kt">int</span> <span class="n">destport</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">message</span><span class="p">)</span>
 </span><span class='line'><span class="p">{</span>
 </span><span class='line'>    <span class="cm">/*</span>
-</span><span class='line'><span class="cm">    When sending TCP/UDP packets/datagrams with raw sockets we need a pseudo header to calculate checksum value,</span>
+</span><span class='line'><span class="cm">    When sending TCP/UDP segments/datagrams with raw sockets we need a pseudo header to calculate checksum value,</span>
 </span><span class='line'><span class="cm">    not used in this case and probably forgot when ripping it from this SYN flooder</span>
 </span><span class='line'><span class="cm">    https://gist.github.com/z0mbiehunt3r/5790220</span>
 </span><span class='line'><span class="cm">    */</span>
