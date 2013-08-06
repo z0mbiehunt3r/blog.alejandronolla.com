@@ -9,7 +9,7 @@
   <meta name="author" content="Alejandro Nolla">
 
   
-  <meta name="description" content="Mitigating at the Quake 3 server side If we search a bit about Quake 3 servers being used to carry on DDoS attacks we will find this kind of attack &hellip;">
+  <meta name="description" content="Introduction Last post we analyzed a technique of doing amplified DDoS attacks using Quake 3 servers through spoofing UDP requests to get some game &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -115,7 +115,11 @@
 
 <div class="post">
   
-  <div class="entry-content"><h2>Mitigating at the Quake 3 server side</h2>
+  <div class="entry-content"><h2>Introduction</h2>
+
+<p>Last post we analyzed a technique of doing amplified DDoS attacks using Quake 3 servers through spoofing UDP requests to get some game statistics info. In this post I show potential ways of mitigation as well as how to detect this kind of attack at a network level and how to try to automatically parse the attack&#8217;s traffic and generate some firewalling rules. <!-- more --></p>
+
+<h2>Mitigating at the Quake 3 server side</h2>
 
 <p>If we search a bit about Quake 3 servers being used to carry on DDoS attacks we will find this kind of attack <a href="http://www.lemuria.org/security/application-drdos.html">is known</a> since some years ago and, in fact, not only Quake 3 are prone to this type of attack but others games based on Quake 3 engine as well (as COD).</p>
 
