@@ -2,47 +2,53 @@
 <urlset xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'>
     <url>
         <loc>http://blog.alejandronolla.com/2013/03/18/embrace-yourselves/</loc>
-        <lastmod>2013-05-05T19:43:25+02:00</lastmod>
+        <lastmod>2013-08-06T02:52:09+02:00</lastmod>
     </url>
     <url>
         <loc>
             http://blog.alejandronolla.com/2013/03/23/indexing-pdf-for-osint-and-pentesting/
         </loc>
-        <lastmod>2013-05-28T22:56:00+02:00</lastmod>
+        <lastmod>2013-08-06T02:52:09+02:00</lastmod>
     </url>
     <url>
         <loc>
             http://blog.alejandronolla.com/2013/04/06/moloch-capturing-and-indexing-network-traffic-in-realtime/
         </loc>
-        <lastmod>2013-05-29T14:06:55+02:00</lastmod>
+        <lastmod>2013-08-06T02:52:09+02:00</lastmod>
     </url>
     <url>
         <loc>http://blog.alejandronolla.com/2013/04/29/solr-improving-queries-performance/</loc>
-        <lastmod>2013-06-26T22:45:07+02:00</lastmod>
+        <lastmod>2013-08-06T02:52:09+02:00</lastmod>
     </url>
     <url>
         <loc>
             http://blog.alejandronolla.com/2013/05/15/detecting-text-language-with-python-and-nltk/
         </loc>
-        <lastmod>2013-05-15T17:02:30+02:00</lastmod>
+        <lastmod>2013-08-06T02:52:09+02:00</lastmod>
     </url>
     <url>
         <loc>
             http://blog.alejandronolla.com/2013/05/20/n-gram-based-text-categorization-categorizing-text-with-python/
         </loc>
-        <lastmod>2013-05-20T21:49:12+02:00</lastmod>
+        <lastmod>2013-08-06T02:52:09+02:00</lastmod>
     </url>
     <url>
         <loc>
             http://blog.alejandronolla.com/2013/05/29/moloch-erasing-data-and-restore-database/
         </loc>
-        <lastmod>2013-05-29T14:09:36+02:00</lastmod>
+        <lastmod>2013-08-06T02:52:09+02:00</lastmod>
     </url>
     <url>
         <loc>
             http://blog.alejandronolla.com/2013/06/24/amplification-ddos-attack-with-quake3-servers-an-analysis-1-slash-2/
         </loc>
-        <lastmod>2013-06-29T01:20:17+02:00</lastmod>
+        <lastmod>2013-08-06T02:52:09+02:00</lastmod>
+    </url>
+    <url>
+        <loc>
+            http://blog.alejandronolla.com/2013/08/05/amplification-ddos-attack-with-quake3-servers-an-analysis-2-slash-2/
+        </loc>
+        <lastmod>2013-08-06T16:55:13+02:00</lastmod>
     </url>
     <url>
         <loc>http://blog.alejandronolla.com/robots.txt</loc>
@@ -50,10 +56,10 @@
     </url>
     <url>
         <loc>http://blog.alejandronolla.com/blog/archives/</loc>
-        <lastmod>2013-06-29T01:20:17+02:00</lastmod>
+        <lastmod>2013-08-06T16:55:13+02:00</lastmod>
     </url>
     <url>
         <loc>http://blog.alejandronolla.com/</loc>
-        <lastmod>2013-06-29T01:20:17+02:00</lastmod>
+        <lastmod>2013-08-06T16:55:13+02:00</lastmod>
     </url>
 </urlset>

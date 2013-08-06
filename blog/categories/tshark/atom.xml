@@ -4,7 +4,7 @@
   <title><![CDATA[Category: tshark | Alejandro Nolla - z0mbiehunt3r]]></title>
   <link href="http://blog.alejandronolla.com/blog/categories/tshark/atom.xml" rel="self"/>
   <link href="http://blog.alejandronolla.com/"/>
-  <updated>2013-06-29T01:20:26+02:00</updated>
+  <updated>2013-08-06T16:55:28+02:00</updated>
   <id>http://blog.alejandronolla.com/</id>
   <author>
     <name><![CDATA[Alejandro Nolla]]></name>
@@ -12,6 +12,500 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Amplification DDoS attack with Quake3 servers: An analysis(2/2)]]></title>
+    <link href="http://blog.alejandronolla.com/2013/08/05/amplification-ddos-attack-with-quake3-servers-an-analysis-2-slash-2/"/>
+    <updated>2013-08-05T14:49:00+02:00</updated>
+    <id>http://blog.alejandronolla.com/2013/08/05/amplification-ddos-attack-with-quake3-servers-an-analysis-2-slash-2</id>
+    <content type="html"><![CDATA[<h2>Mitigating at the Quake 3 server side</h2>
+
+<p>If we search a bit about Quake 3 servers being used to carry on DDoS attacks we will find this kind of attack <a href="http://www.lemuria.org/security/application-drdos.html">is known</a> since some years ago and, in fact, not only Quake 3 are prone to this type of attack but others games based on Quake 3 engine as well (as COD).</p>
+
+<p>I decided to dig into ioq3 server code to see if there is any kind of mitigation for this type of attack, grep in hand:<br/>
+``` bash greping for potentially interesting strings
+~/ioq3/code/server$ grep -iRn 'flood' *
+server.h:291:extern cvar_t  <em>sv_floodProtect;
+sv_client.c:36:flood the server with invalid connection IPs.  With a
+sv_client.c:78: // excess outbound bandwidth usage when being flooded inbound
+sv_client.c:1621:   // including the usercmd.  This causes flooders to lag themselves
+sv_client.c:1627:       sv_floodProtect->integer &amp;&amp;
+sv_client.c:1979:           return; // we couldnt execute it because of the flood protection
+sv_init.c:649:  sv_floodProtect = Cvar_Get ("sv_floodProtect", "1", CVAR_ARCHIVE | CVAR_SERVERINFO );
+sv_main.c:58:cvar_t </em>sv_floodProtect;
+sv_main.c:550:  // excess outbound bandwidth usage when being flooded inbound
+sv_main.c:613:  // excess outbound bandwidth usage when being flooded inbound</p>
+
+<p>~/ioq3/code/server$ grep -iRn 'amplif' *
+sv_client.c:70: // Prevent using getchallenge as an amplifier
+sv_main.c:542:  // Prevent using getstatus as an amplifier
+sv_main.c:605:  // Prevent using getinfo as an amplifier
+sv_main.c:712:  // Prevent using rcon as an amplifier and make dictionary attacks impractical</p>
+
+<p>~/ioq3/code/server$ grep -iRn 'dosed' *
+sv_client.c:77: // Allow getchallenge to be DoSed relatively easily, but prevent
+sv_main.c:549:  // Allow getstatus to be DoSed relatively easily, but prevent
+sv_main.c:612:  // Allow getinfo to be DoSed relatively easily, but prevent
+```</p>
+
+<p>It seems that ioq3 developers have integrated some mitigating mechanisms against DDoS attacks, both when Q3 server is being used as an amplifier and when Q3 is directly attacked with a traffic flood, so take a deeper look into those mechanisms:<br/>
+``` c++ ioq3 DDoS detection and mitigation mechanisms - sv_main.c:542</p>
+
+<pre><code>// Prevent using getstatus as an amplifier
+if ( SVC_RateLimitAddress( from, 10, 1000 ) ) {
+    Com_DPrintf( "SVC_Status: rate limit from %s exceeded, dropping request\n",
+        NET_AdrToString( from ) );
+    return;
+}
+</code></pre>
+
+<p>```</p>
+
+<p>When an IP address sends a "getstatus" command some checks are done prior of let command passing, "SVC_BucketForAddress( from, burst, period )" call will look for associated data to "getstatus" sender IP address:<br/>
+``` c++ ioq3 DDoS detection and mitigation mechanisms - sv_main.c:505</p>
+
+<h1>/*</h1>
+
+<p>SVC_RateLimitAddress</p>
+
+<h1>Rate limit for a particular address</h1>
+
+<p>*/
+qboolean SVC_RateLimitAddress( netadr_t from, int burst, int period ) {</p>
+
+<pre><code>leakyBucket_t *bucket = SVC_BucketForAddress( from, burst, period );
+
+return SVC_RateLimit( bucket, burst, period );
+</code></pre>
+
+<p>}
+```</p>
+
+<p>Now ioq3 will check if sender IP address has exceeded established rate limit, being it 10 commands in just one second period (remember previous call <em>"if ( SVC_RateLimitAddress( from, 10, 1000 ) )"</em>):<br/>
+``` c++ ioq3 DDoS detection and mitigation mechanisms - sv_main.c:475</p>
+
+<h1>/*</h1>
+
+<h1>SVC_RateLimit</h1>
+
+<p><em>/
+qboolean SVC_RateLimit( leakyBucket_t </em>bucket, int burst, int period ) {</p>
+
+<pre><code>if ( bucket != NULL ) {
+    int now = Sys_Milliseconds();
+    int interval = now - bucket-&gt;lastTime;
+    int expired = interval / period;
+    int expiredRemainder = interval % period;
+
+    if ( expired &gt; bucket-&gt;burst ) {
+        bucket-&gt;burst = 0;
+        bucket-&gt;lastTime = now;
+    } else {
+        bucket-&gt;burst -= expired;
+        bucket-&gt;lastTime = now - expiredRemainder;
+    }
+
+    if ( bucket-&gt;burst &lt; burst ) {
+        bucket-&gt;burst++;
+
+        return qfalse;
+    }
+}
+
+return qtrue;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>As seen, ioq3 server implements some mitigation techniques to avoid using servers as amplifiers but, because they are based on rate limits, an attacker could use them sending at lower rates to avoid being filtered by amplifiers servers, circumventing this protection. A good approach to this type of attack could be implementing challenge-response methods in the game protocol to avoid sending big answers to requests that doesn't contain a valid challenge token. Because of the nature of this kind of protection, an attacker shouldn't be able to spoof the token request and get it to use in spoofed "getstatus" query nor predict a valid token to avoid token request phase and just use a pre-generated token in spoofed "getstatus" request (as well as being unable to doing a replay attack using previously used tokens), probably I am going to write another more detailed post about this and other stuff I found while doing some research in the future.</p>
+
+<p>On a similar way to ioq3 server implementation mitigation techniques we could set up an iptables rate limiting policy to automatically drop <em>any</em> traffic from spoofed IP addresses (victim or victims) at layer three and avoid wasting resources on their processing.</p>
+
+<p>I have just totally ripped off this iptables rules from <a href="http://www.quake.ie/blogs/rawshark/preventing-ddos-attacks-quake-3-server.php">here</a>, so credit goes to <a href="http://www.quake.ie/users/rawshark">RawShark</a>:
+``` bash iptables mitigation of Quake 3 DDoS amplification attack</p>
+
+<h1>create chain</h1>
+
+<p>iptables -N quake3_ddos</p>
+
+<h1>accept real client/player traffic</h1>
+
+<p>iptables -A quake3_ddos -m u32 ! --u32 "0x1c=0xffffffff" -j ACCEPT</p>
+
+<h1>match "getstatus" queries and remember their address</h1>
+
+<p>iptables -A quake3_ddos -m u32 --u32 "0x20=0x67657473&amp;&amp;0x24=0x74617475&amp;&amp;0x25&amp;0xff=0x73" -m recent --name getstatus --set</p>
+
+<h1>drop packet if "hits" per "seconds" is reached</h1>
+
+<p>#</p>
+
+<h1>NOTE: if you run multiple servers on a single host, you will need to higher these limits</h1>
+
+<h1>as otherwise you will block regular server queries, like Spider or QConnect</h1>
+
+<h1>e.g. they will query all of your servers within a second to update the list</h1>
+
+<p>iptables -A quake3_ddos -m recent --update --name getstatus --hitcount 5 --seconds 2 -j DROP</p>
+
+<h1>accept otherwise</h1>
+
+<p>iptables -A quake3_ddos -j ACCEPT</p>
+
+<p>#
+#</p>
+
+<h1>finally insert the chain as the top most input filter</h1>
+
+<h1>single server</h1>
+
+<h1>iptables -I INPUT 1 -p udp --dport 27960 -j quake3_ddos</h1>
+
+<h1>multiple servers</h1>
+
+<p>iptables -I INPUT 1 -p udp --dports 27960,27961,27962 -j quake3_ddos
+```</p>
+
+<p>Only lef to say we only filtered "getstatus" command with those iptables rules, remember the others commands as well.</p>
+
+<h2>Hunting it down across the network</h2>
+
+<p>Once we know the ins and outs of this type of DDoS attack and analyzed generate network traffic, as well as readed tool code, we are closer of being able to spot this way of flood and trying to mitigate it. We need to have in mind the fact that, lower TCP/IP layer used to detect anomalous traffic patterns, lower use of resources; it will be much easier to stop a datagram at network layer - maybe based in IP addresses of known Quake 3 servers ;) - than going up to application layer trying to stop a datagram based on its payload and, when dealing with attacks of dozens or hundred of Gbs, the difference will be crucial.</p>
+
+<h3>Using tshark for network analysis</h3>
+
+<p><a href="http://www.wireshark.org/docs/wsug_html_chunked/AppToolstshark.html">tshark</a> is a terminal based version of Wireshark for doing powerful and quick network packet capturing/analysis and is really useful when doing network forensics because we can use Wireshark's <a href="http://wiki.wireshark.org/DisplayFilters">DisplayFilters</a> including <a href="http://www.wireshark.org/docs/dfref/">a lot</a> of supported protocols.</p>
+
+<p>Also, if you are interested in tshark/network analysis, I highly recommend <a href="http://www.packtpub.com/traffic-analysis-with-tshark/book">this</a> ebook called "Instant Traffic Analysis with Tshark How-to" and written by <a href="https://twitter.com/BorjaMerino">Borja Merino</a>, it offers a quick and really useful set of recipes for analyzing traffic with tshark, totally worths it.</p>
+
+<p>For example, let's specify tshark to show Quake 3 datagrams (using <a href="http://anonsvn.wireshark.org/wireshark/trunk/epan/dissectors/packet-quake3.c">quake3 dissector</a>) with a UDP length of 22 bytes (we could set <a href="http://www.wireshark.org/docs/dfref/q/quake3.html">more specific options</a>):</p>
+
+<p><code>bash network forensics with tshark
+$ tshark -r udp_quake3.pcap.cloaked -R 'udp.length == 22 &amp;&amp; quake3'
+ 33   0.002043  128.66.0.32 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+ 50   0.003085 128.66.142.197 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+ 83   0.005171 128.66.227.122 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+106   0.006501  128.66.78.4 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+124   0.007610 128.66.249.35 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+129   0.007930 128.66.238.141 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+140   0.008582 128.66.189.147 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+144   0.008812 128.66.238.48 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+147   0.009012 128.66.249.35 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+157   0.009582 128.66.75.113 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+179   0.010909 128.66.238.48 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+</code></p>
+
+<p>By default tshark will print info with this format "frame number; relative time; source IP; destination IP; dissected protocol; frame size (bytes); protocol dissected info" as shown above but it isn't well formatted for an easy processing, so let's say tshark to show output as formatted CSV:</p>
+
+<p><code>bash tshark csv output
+$ tshark -r udp_quake3.pcap.cloaked -R 'udp.length == 22 &amp;&amp; quake3' -T fields -E separator=';' -e ip.src -e udp.srcport -e ip.dst
+128.66.79.215;27960;128.66.7.9
+128.66.159.73;27960;128.66.7.9
+128.66.119.203;27960;128.66.7.9
+128.66.58.250;27960;128.66.7.9
+128.66.232.7;27960;128.66.7.9
+128.66.120.133;27960;128.66.7.9
+128.66.212.39;27960;128.66.7.9
+128.66.156.90;27960;128.66.7.9
+128.66.189.147;27960;128.66.7.9
+128.66.160.78;27960;128.66.7.9
+128.66.29.104;27960;128.66.7.9
+128.66.143.194;27960;128.66.7.9
+128.66.188.75;27960;128.66.7.9
+128.66.221.179;27960;128.66.7.9
+</code></p>
+
+<p>Now we could make a script to consume tshark output and deploy firewall rules in almost real-time or, maybe, make some pretty statistics for the unavoidable report once the attack has finished / been mitigated.</p>
+
+<p>Probably you are asking yourself the reason I specified an UDP length of 22 bytes, so take a look to the structure of an UDP datagram:<br/>
+<img src="/images/upload/2013/08/udp_header.png"></p>
+
+<p>As we saw when analyzing udp.c code and his mistakes, an UDP header size is 8 bytes plus any payload, because in this case we have a payload of 14 <em>("....disconnect")</em> bytes it does a total sum of 22 bytes for a triggered response of "disconnect" (response provoked by bad seted UDP length in original udp.c code) so it would be useful against this specific bad coded version of attackers' tool, despite of it should be improved and/or adapted for others versions of scripts or for a well carried spoofed attack in which Quake 3 servers will answer with server info and no with a "disconnect" command.</p>
+
+<p>At last but not least, tshark also allow to use Wireshark's "<a href="http://www.wireshark.org/docs/man-pages/wireshark-filter.html">contains</a>" and "match" filters to show only those packets with a specific pattern:
+<code>bash thsark filtering UDP datagrams with "....disconnect" text
+$ tshark -r udp_quake3.pcap.cloaked -R 'udp contains ff:ff:ff:ff:64:69:73:63:6f:6e:6e:65:63:74'
+ 33   0.002043  128.66.0.32 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+ 50   0.003085 128.66.142.197 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+ 70   0.004313 128.66.143.168 -&gt; 128.66.7.9   UDP 60 Source port: 27967  Destination port: 65511
+ 79   0.004898 128.66.12.63 -&gt; 128.66.7.9   UDP 60 Source port: 27003  Destination port: 13190
+ 81   0.005006 128.66.239.175 -&gt; 128.66.7.9   UDP 60 Source port: 27990  Destination port: 5475
+ 83   0.005171 128.66.227.122 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+106   0.006501  128.66.78.4 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+</code></p>
+
+<p>When comparing these results against the previous ones we can observe more amplifiers servers because we are not relying on UDP source port but in UDP payload content to detect them.</p>
+
+<h3>Using ngrep to build iptables rules</h3>
+
+<p><a href="http://ngrep.sourceforge.net/">ngrep</a> is a network troubleshooting tool that allow us to analyze previously captured traffic in a pcap file or a life sniffing session to debug traffic in a similar way like "grep" Unix tool, his primary goal is to parse and display plaintext protocols like HTTP or SMTP.</p>
+
+<p>In this case we are going to "grep" for a "....disconnect" string specifying to don't print hash marks (-q) :<br/>
+``` bash network forensic with ngrep
+$ ngrep -q -I udp_quake3.pcap.cloaked '\xFF\xFF\xFF\xFFdisconnect'
+U 128.66.238.228:27961 -> 128.66.7.9:26457
+....disconnect....</p>
+
+<p>U 128.66.0.103:27960 -> 128.66.7.9:65247
+....disconnect....</p>
+
+<p>U 128.66.217.157:27960 -> 128.66.7.9:48320
+....disconnect....</p>
+
+<p>U 128.66.238.48:27960 -> 128.66.7.9:32267
+....disconnect....</p>
+
+<p>U 128.66.132.204:27960 -> 128.66.7.9:58316
+....disconnect....</p>
+
+<p>U 128.66.168.194:27993 -> 128.66.7.9:12525
+....disconnect....</p>
+
+<p>U 128.66.168.248:27961 -> 128.66.7.9:8946
+....disconnect....
+```</p>
+
+<p>While this format is easy to read by a human we would need to parse it prior to doing any kind of filtering. For example, we could parse this output to just show Quake 3 amplifiers servers being used in the attack to generate some type of firewall rule:</p>
+
+<p><code>bash parsing ngrep output to get just amplifiers IP addresses
+$ ngrep -q -I udp_quake3.pcap.cloaked '\xFF\xFF\xFF\xFFdisconnect' | awk '/U [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+/{print $2}' | cut -d ':' -f 1 | sort -u
+128.66.99.246
+128.66.99.28
+192.0.2.155
+192.0.2.239
+192.0.2.45
+198.51.100.213
+198.51.100.225
+198.51.100.65
+203.0.113.120
+</code></p>
+
+<p>We could go a step ahead and create a set of DROP rules for a Linux router with iptables beyond parsing ngrep output:
+<code>bash generating iptables rules based on ngrep output
+$ for ip in `ngrep -q -I udp_quake3.pcap.cloaked '\xFF\xFF\xFF\xFFdisconnect' | awk '/U [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+/{print $2}' | cut -d ':' -f 1 | sort -u`; do echo "iptables -A FORWARD -s $ip -j DROP" &gt;&gt; quake3_ddos.iptables; done
+$ head -n 5 quake3_ddos.iptables
+iptables -A FORWARD -s 128.66.0.103 -j DROP
+iptables -A FORWARD -s 128.66.0.18 -j DROP
+iptables -A FORWARD -s 128.66.0.181 -j DROP
+iptables -A FORWARD -s 128.66.0.246 -j DROP
+iptables -A FORWARD -s 128.66.0.27 -j DROP
+</code></p>
+
+<h3>Parsing attack with scapy and automatic deployment of a Cisco IOS access-list</h3>
+
+<p>Ok, analyzing network traffic and spotting attack patterns is fun, but analyzing traffic looking for previously spotted pattern and automatically blocking attacking IP addresses at perimetral routers is far better, so I'm going to explain how to make such easy but powerful script in a few lines with python.</p>
+
+<p>We are going to need <a href="http://www.secdev.org/projects/scapy/">scapy</a> again as well as <a href="https://github.com/knipknap/exscript/wiki">exscript</a> module to interact with Cisco routers. Then we just need to analyze UDP datagrams and look for "....disconnect" or "....statusResponse" in payload content to list Quake 3 servers being used as amplifiers, once done only remains to create access-list entries for those IP address.</p>
+
+<p>Here is an example for doing this process:<br/>
+``` python quake3_ddos_parser.py</p>
+
+<h1>!/usr/bin/env python</h1>
+
+<h1>coding:utf-8</h1>
+
+<h1>Author: Alejandro Nolla - z0mbiehunt3r</h1>
+
+<h1>Purpose: Example for identifying Quake 3 amplifiers and block them with Cisco access-list</h1>
+
+<h1>Created: 21/06/13</h1>
+
+<p>import sys</p>
+
+<p>try:</p>
+
+<pre><code>from Exscript.util.interact import read_login
+from Exscript.protocols import SSH2
+</code></pre>
+
+<p>except ImportError:</p>
+
+<pre><code>print 'You need exscript (https://github.com/knipknap/exscript)'
+sys.exit(-1)
+</code></pre>
+
+<p>import logging
+logging.getLogger("scapy.runtime").setLevel(logging.ERROR) # supress everything below error
+try:</p>
+
+<pre><code>from scapy.all import rdpcap
+</code></pre>
+
+<p>except ImportError:</p>
+
+<pre><code>print 'You need scapy (http://www.secdev.org/projects/scapy/)'
+sys.exit(-1)
+</code></pre>
+
+<h1>----------------------------------------------------------------------</h1>
+
+<p>def extract_quake3_amplifiers(pcap_file_path):</p>
+
+<pre><code>"""
+It will classify an IP address as an amplifier if UDP payload
+consists of "....disconnect" or "....statusResponse" command
+
+@param pcap_file_path: Path to pcap file to parse
+@type pcap_file_path: str
+
+@return: Set with amplifiers servers
+@rtype: set
+"""
+
+amplifiers_servers = set()
+
+'''
+rdpcap will read all packets at once, if you need to read
+it sequentially take a look to PcapReader
+http://www.sourcecodebrowser.com/scapy/1.0.2/classscapy_1_1_pcap_reader.html
+'''
+packets = rdpcap(pcap_file_path, count=1000)
+
+for packet in packets:
+    if not packet.haslayer('UDP'):
+        continue
+    if packet.haslayer('Raw'):
+        raw_udp_payload = packet.getlayer('Raw')
+        ip_layer = packet.getlayer('IP')
+        if raw_udp_payload.load == '\xff\xff\xff\xffdisconnect' or\
+           raw_udp_payload.load[0:18] == '\xff\xff\xff\xffstatusResponse':
+            amplifiers_servers.add(ip_layer.src)
+
+return amplifiers_servers
+</code></pre>
+
+<p>if <strong>name</strong>=='<strong>main</strong>':</p>
+
+<pre><code>PCAP_FILE = './udp_quake3.pcap.cloaked'
+print '''Example of Quake 3 DDoS amplification attack parser to automatically deploy Cisco IOS access-list
+- by Alejandro Nolla (z0mbiehunt3r)'''
+print '[*] Parsing %s' %PCAP_FILE
+
+amplifiers_servers = extract_quake3_amplifiers(PCAP_FILE)
+
+print '[+] Got %i amplifiers servers being used in the attack...' %len(
+                                                                      amplifiers_servers)
+
+account = read_login() # read login from prompt
+conn = SSH2()
+conn.connect('192.168.1.245')
+conn.login(account)
+print conn.response
+
+conn.execute('config t')
+print conn.response
+# create access-list
+print '[!] Deploying access-list, take a coffee...'
+conn.execute('ip access-list extended quake3_ddos')
+
+for server in amplifiers_servers:
+    '''
+    here we directly block IP protocol but we could block UDP for Quake 3
+    responses and ICMP protocol for traffic potentially being generated
+    for hosts/ports unreachable and so on typical in DDoS attacks
+    (backscatter effect)
+
+    Also, we could block only ports being used in the attack (game ones, finite)
+    '''
+    conn.execute('deny ip host %s any' %server) # add one rule per amplifier
+
+# caution with implicit deny (legitimate users' traffic, routing protocols, etc)
+conn.execute('permit ip any any')
+# apply access-list to interface
+conn.execute('interface fastEthernet 1/1')
+conn.execute('ip access-group quake3_ddos in')
+# quick'n dirty way for copy running-config startup-config
+conn.execute('do wr')
+print conn.response
+
+conn.send('exit\r')
+conn.close()
+
+print '[-] SLD-26 shield deployed'
+</code></pre>
+
+<p>```</p>
+
+<p>Time to execute it and await, it's going to take his time when processing a real DDoS capture (millions of packets), so it's highly recommended to make a prior filter with tshark and adapt this script to use multiple CPUs (or programming it in C):<br/>
+``` bash parsing and generating access-list
+$ python quake3_ddos_parser.py
+Example of Quake 3 DDoS amplification attack parser to automatically deploy Cisco IOS access-list</p>
+
+<pre><code>- by Alejandro Nolla (z0mbiehunt3r)
+</code></pre>
+
+<p>[*] Parsing ./udp_quake3.pcap.cloaked
+[+] Got 455 amplifiers servers being used in the attack...
+Please enter your user name [z0mbiehunt3r]: cisco
+Please enter your password:</p>
+
+<p>Endor#
+config t
+Enter configuration commands, one per line.  End with CNTL/Z.
+Endor(config)#
+[!] Deploying access-list, take a coffee...
+do wr
+Building configuration...
+[OK]
+Endor(config-ext-nacl)#
+[-] SLD-26 shield deployed
+```</p>
+
+<p>Now connect to our router and check if everything went ok:<br/>
+``` ios checking access-list for quake 3 amplifiers
+Endor> enable
+Endor# show ip access-lists quake3_ddos
+Extended IP access list quake3_ddos</p>
+
+<pre><code>10 deny ip host 192.0.2.239 any
+20 deny ip host 128.66.194.14 any
+30 deny ip host 128.66.233.82 any
+40 deny ip host 128.66.186.59 any
+50 deny ip host 128.66.150.252 any
+[...]
+</code></pre>
+
+<p>```</p>
+
+<p>Well, so it seems access-list was created ok, attack traffic should begin to be dropped (at filtering router) in seconds, time to figure out next attack vector that will try being exploited, attackers will move to another technique for sure.</p>
+
+<h3>Creating a snort rule</h3>
+
+<p>If we have a snort sensor or IPS system we could create specific rules based on detected attack pattern to protect us against analyzed DDoS technique. Anyway, going up to application layer is highly discouraged to mitigate a real DDoS attack because it will require more CPU and RAM to process each packet not only because of unwrapping more layers but because specific "simple" filtering actions like filtering on IP addresses and/or ports are performed through packet forwarding hardware (<a href="http://en.wikipedia.org/wiki/Application-specific_integrated_circuit">ASIC</a>) and will be far better than a CPU filtering approach done in most majority of appliances.</p>
+
+<p>For testing purposes I have used a <a href="http://securityonion.blogspot.com.es/">security onion</a> virtual machine with snort and <a href="https://snorby.org/">snorby</a> running for capturing and visualizing alerts respectively. To create a snort rule to detect inbound DDoS amplification attack using Quake 3 servers we are going to look for "...disconnect" (again it works only for analyzed script and should be extended to the others already analyzed caseloads) in UDP payload, now it's time to read <a href="http://manual.snort.org/node27.html">"Writing Snort Rules"</a>:<br/>
+``` bash detecting attack with snort</p>
+
+<h1>vim /etc/nsm/rules/local.rules</h1>
+
+<p>alert udp any any -> any any (msg:"Quake 3 DDoS amplification attack INBOUND"; content:"|ff ff ff ff 64 69 73 63 6f 6e 6e 65 63 74|"; nocase; offset:0; depth:14; sid:1000666; rev:1;)</p>
+
+<h1>rule-update</h1>
+
+<p>```</p>
+
+<ul>
+<li>alert udp any any -> any any: analyze any source:port to any destination:port if UDP</li>
+<li>content: tell snort hex string to search</li>
+<li>nocase: in a no case sensitive way</li>
+<li>offset: start analyzing in offset 0 for payload</li>
+<li>depth: and only up to next 14 bytes (for speed optimization, size of content searched)</li>
+</ul>
+
+
+<p>If we create this rule and use scapy as shown before to send a UDP datagram with this pattern an alert will be triggered and a new event will be shown in our snorby interface:<br/>
+<img src="/images/upload/2013/08/snorby_rule.png"></p>
+
+<p>If we analyze with attention the previous image we are can see IP ToS, TTL, UDP length and payload as previously analyzed, so it seems our patterns works fine (despited of it should be improved).</p>
+
+<h2>Conclusions</h2>
+
+<p>After spending some weeks researching about this kind of attack vector -using several games servers as amplifiers- I'm sure it's an attack that can be really powerful to launch storms of spoofed UDP datagrams with almost no cost or effort at all, it's really easy to get an almost real time updated list of online servers without having to make any kind of port scanning but just parsing online gaming directories and, to make matters worse, amplification factors can be up to several dozens original throughput and, because this kind of attack is less known, IT people will be less aware and ready to face off such techniques.</p>
+
+<p>The fact that this kind of attack is being actively used in DDoS as a service platforms to launch attacks from several web booters makes important to know this attack, how to detect it and how to try to defend against him, so stay alert and see you at next post!</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Amplification DDoS attack with Quake3 servers: An analysis (1/2)]]></title>

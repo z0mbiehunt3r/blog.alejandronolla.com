@@ -4,7 +4,7 @@
   <title><![CDATA[Alejandro Nolla - z0mbiehunt3r]]></title>
   <link href="http://blog.alejandronolla.com/atom.xml" rel="self"/>
   <link href="http://blog.alejandronolla.com/"/>
-  <updated>2013-06-29T01:20:26+02:00</updated>
+  <updated>2013-08-06T16:55:28+02:00</updated>
   <id>http://blog.alejandronolla.com/</id>
   <author>
     <name><![CDATA[Alejandro Nolla]]></name>
@@ -12,6 +12,765 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Amplification DDoS attack with Quake3 servers: An analysis(2/2)]]></title>
+    <link href="http://blog.alejandronolla.com/2013/08/05/amplification-ddos-attack-with-quake3-servers-an-analysis-2-slash-2/"/>
+    <updated>2013-08-05T14:49:00+02:00</updated>
+    <id>http://blog.alejandronolla.com/2013/08/05/amplification-ddos-attack-with-quake3-servers-an-analysis-2-slash-2</id>
+    <content type="html"><![CDATA[<h2>Mitigating at the Quake 3 server side</h2>
+
+<p>If we search a bit about Quake 3 servers being used to carry on DDoS attacks we will find this kind of attack <a href="http://www.lemuria.org/security/application-drdos.html">is known</a> since some years ago and, in fact, not only Quake 3 are prone to this type of attack but others games based on Quake 3 engine as well (as COD).</p>
+
+<p>I decided to dig into ioq3 server code to see if there is any kind of mitigation for this type of attack, grep in hand:</p>
+
+<figure class='code'><figcaption><span>greping for potentially interesting strings</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>~/ioq3/code/server<span class="nv">$ </span>grep -iRn <span class="s1">&#39;flood&#39;</span> *
+</span><span class='line'>server.h:291:extern   cvar_t  *sv_floodProtect;
+</span><span class='line'>sv_client.c:36:flood the server with invalid connection IPs.  With a
+</span><span class='line'>sv_client.c:78:   // excess outbound bandwidth usage when being flooded inbound
+</span><span class='line'>sv_client.c:1621: // including the usercmd.  This causes flooders to lag themselves
+</span><span class='line'>sv_client.c:1627:     sv_floodProtect-&gt;integer <span class="o">&amp;&amp;</span>
+</span><span class='line'>sv_client.c:1979:         <span class="k">return</span>;  // we couldnt execute it because of the flood protection
+</span><span class='line'>sv_init.c:649:    <span class="nv">sv_floodProtect</span> <span class="o">=</span> Cvar_Get <span class="o">(</span><span class="s2">&quot;sv_floodProtect&quot;</span>, <span class="s2">&quot;1&quot;</span>, CVAR_ARCHIVE | CVAR_SERVERINFO <span class="o">)</span>;
+</span><span class='line'>sv_main.c:58:cvar_t   *sv_floodProtect;
+</span><span class='line'>sv_main.c:550:    // excess outbound bandwidth usage when being flooded inbound
+</span><span class='line'>sv_main.c:613:    // excess outbound bandwidth usage when being flooded inbound
+</span><span class='line'>
+</span><span class='line'>~/ioq3/code/server<span class="nv">$ </span>grep -iRn <span class="s1">&#39;amplif&#39;</span> *
+</span><span class='line'>sv_client.c:70:   // Prevent using getchallenge as an amplifier
+</span><span class='line'>sv_main.c:542:    // Prevent using getstatus as an amplifier
+</span><span class='line'>sv_main.c:605:    // Prevent using getinfo as an amplifier
+</span><span class='line'>sv_main.c:712:    // Prevent using rcon as an amplifier and make dictionary attacks impractical
+</span><span class='line'>
+</span><span class='line'>~/ioq3/code/server<span class="nv">$ </span>grep -iRn <span class="s1">&#39;dosed&#39;</span> *
+</span><span class='line'>sv_client.c:77:   // Allow getchallenge to be DoSed relatively easily, but prevent
+</span><span class='line'>sv_main.c:549:    // Allow getstatus to be DoSed relatively easily, but prevent
+</span><span class='line'>sv_main.c:612:    // Allow getinfo to be DoSed relatively easily, but prevent
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It seems that ioq3 developers have integrated some mitigating mechanisms against DDoS attacks, both when Q3 server is being used as an amplifier and when Q3 is directly attacked with a traffic flood, so take a deeper look into those mechanisms:</p>
+
+<figure class='code'><figcaption><span>ioq3 DDoS detection and mitigation mechanisms - sv_main.c:542</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="c1">// Prevent using getstatus as an amplifier</span>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span> <span class="n">SVC_RateLimitAddress</span><span class="p">(</span> <span class="n">from</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">1000</span> <span class="p">)</span> <span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">Com_DPrintf</span><span class="p">(</span> <span class="s">&quot;SVC_Status: rate limit from %s exceeded, dropping request</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+</span><span class='line'>      <span class="n">NET_AdrToString</span><span class="p">(</span> <span class="n">from</span> <span class="p">)</span> <span class="p">);</span>
+</span><span class='line'>  <span class="k">return</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>When an IP address sends a &#8220;getstatus&#8221; command some checks are done prior of let command passing, &#8220;SVC_BucketForAddress( from, burst, period )&#8221; call will look for associated data to &#8220;getstatus&#8221; sender IP address:</p>
+
+<figure class='code'><figcaption><span>ioq3 DDoS detection and mitigation mechanisms - sv_main.c:505</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="cm">/*</span>
+</span><span class='line'><span class="cm">================</span>
+</span><span class='line'><span class="cm">SVC_RateLimitAddress</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">Rate limit for a particular address</span>
+</span><span class='line'><span class="cm">================</span>
+</span><span class='line'><span class="cm">*/</span>
+</span><span class='line'><span class="n">qboolean</span> <span class="n">SVC_RateLimitAddress</span><span class="p">(</span> <span class="n">netadr_t</span> <span class="n">from</span><span class="p">,</span> <span class="kt">int</span> <span class="n">burst</span><span class="p">,</span> <span class="kt">int</span> <span class="n">period</span> <span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">leakyBucket_t</span> <span class="o">*</span><span class="n">bucket</span> <span class="o">=</span> <span class="n">SVC_BucketForAddress</span><span class="p">(</span> <span class="n">from</span><span class="p">,</span> <span class="n">burst</span><span class="p">,</span> <span class="n">period</span> <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="n">SVC_RateLimit</span><span class="p">(</span> <span class="n">bucket</span><span class="p">,</span> <span class="n">burst</span><span class="p">,</span> <span class="n">period</span> <span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now ioq3 will check if sender IP address has exceeded established rate limit, being it 10 commands in just one second period (remember previous call <em>&#8220;if ( SVC_RateLimitAddress( from, 10, 1000 ) )&#8221;</em>):</p>
+
+<figure class='code'><figcaption><span>ioq3 DDoS detection and mitigation mechanisms - sv_main.c:475</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="cm">/*</span>
+</span><span class='line'><span class="cm">================</span>
+</span><span class='line'><span class="cm">SVC_RateLimit</span>
+</span><span class='line'><span class="cm">================</span>
+</span><span class='line'><span class="cm">*/</span>
+</span><span class='line'><span class="n">qboolean</span> <span class="n">SVC_RateLimit</span><span class="p">(</span> <span class="n">leakyBucket_t</span> <span class="o">*</span><span class="n">bucket</span><span class="p">,</span> <span class="kt">int</span> <span class="n">burst</span><span class="p">,</span> <span class="kt">int</span> <span class="n">period</span> <span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span> <span class="n">bucket</span> <span class="o">!=</span> <span class="nb">NULL</span> <span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">now</span> <span class="o">=</span> <span class="n">Sys_Milliseconds</span><span class="p">();</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">interval</span> <span class="o">=</span> <span class="n">now</span> <span class="o">-</span> <span class="n">bucket</span><span class="o">-&gt;</span><span class="n">lastTime</span><span class="p">;</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">expired</span> <span class="o">=</span> <span class="n">interval</span> <span class="o">/</span> <span class="n">period</span><span class="p">;</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">expiredRemainder</span> <span class="o">=</span> <span class="n">interval</span> <span class="o">%</span> <span class="n">period</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span> <span class="n">expired</span> <span class="o">&gt;</span> <span class="n">bucket</span><span class="o">-&gt;</span><span class="n">burst</span> <span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">bucket</span><span class="o">-&gt;</span><span class="n">burst</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>          <span class="n">bucket</span><span class="o">-&gt;</span><span class="n">lastTime</span> <span class="o">=</span> <span class="n">now</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">bucket</span><span class="o">-&gt;</span><span class="n">burst</span> <span class="o">-=</span> <span class="n">expired</span><span class="p">;</span>
+</span><span class='line'>          <span class="n">bucket</span><span class="o">-&gt;</span><span class="n">lastTime</span> <span class="o">=</span> <span class="n">now</span> <span class="o">-</span> <span class="n">expiredRemainder</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span> <span class="n">bucket</span><span class="o">-&gt;</span><span class="n">burst</span> <span class="o">&lt;</span> <span class="n">burst</span> <span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">bucket</span><span class="o">-&gt;</span><span class="n">burst</span><span class="o">++</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="k">return</span> <span class="n">qfalse</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="n">qtrue</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As seen, ioq3 server implements some mitigation techniques to avoid using servers as amplifiers but, because they are based on rate limits, an attacker could use them sending at lower rates to avoid being filtered by amplifiers servers, circumventing this protection. A good approach to this type of attack could be implementing challenge-response methods in the game protocol to avoid sending big answers to requests that doesn&#8217;t contain a valid challenge token. Because of the nature of this kind of protection, an attacker shouldn&#8217;t be able to spoof the token request and get it to use in spoofed &#8220;getstatus&#8221; query nor predict a valid token to avoid token request phase and just use a pre-generated token in spoofed &#8220;getstatus&#8221; request (as well as being unable to doing a replay attack using previously used tokens), probably I am going to write another more detailed post about this and other stuff I found while doing some research in the future.</p>
+
+<p>On a similar way to ioq3 server implementation mitigation techniques we could set up an iptables rate limiting policy to automatically drop <em>any</em> traffic from spoofed IP addresses (victim or victims) at layer three and avoid wasting resources on their processing.</p>
+
+<p>I have just totally ripped off this iptables rules from <a href="http://www.quake.ie/blogs/rawshark/preventing-ddos-attacks-quake-3-server.php">here</a>, so credit goes to <a href="http://www.quake.ie/users/rawshark">RawShark</a>:</p>
+
+<figure class='code'><figcaption><span>iptables mitigation of Quake 3 DDoS amplification attack</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c"># create chain</span>
+</span><span class='line'>iptables -N quake3_ddos
+</span><span class='line'>
+</span><span class='line'><span class="c"># accept real client/player traffic</span>
+</span><span class='line'>iptables -A quake3_ddos -m u32 ! --u32 <span class="s2">&quot;0x1c=0xffffffff&quot;</span> -j ACCEPT
+</span><span class='line'>
+</span><span class='line'><span class="c"># match &quot;getstatus&quot; queries and remember their address</span>
+</span><span class='line'>iptables -A quake3_ddos -m u32 --u32 <span class="s2">&quot;0x20=0x67657473&amp;&amp;0x24=0x74617475&amp;&amp;0x25&amp;0xff=0x73&quot;</span> -m recent --name getstatus --set
+</span><span class='line'>
+</span><span class='line'><span class="c"># drop packet if &quot;hits&quot; per &quot;seconds&quot; is reached</span>
+</span><span class='line'><span class="c">#</span>
+</span><span class='line'><span class="c"># NOTE: if you run multiple servers on a single host, you will need to higher these limits</span>
+</span><span class='line'><span class="c"># as otherwise you will block regular server queries, like Spider or QConnect</span>
+</span><span class='line'><span class="c"># e.g. they will query all of your servers within a second to update the list</span>
+</span><span class='line'>iptables -A quake3_ddos -m recent --update --name getstatus --hitcount 5 --seconds 2 -j DROP
+</span><span class='line'>
+</span><span class='line'><span class="c"># accept otherwise</span>
+</span><span class='line'>iptables -A quake3_ddos -j ACCEPT
+</span><span class='line'>
+</span><span class='line'><span class="c">#</span>
+</span><span class='line'><span class="c">#</span>
+</span><span class='line'><span class="c"># finally insert the chain as the top most input filter</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># single server</span>
+</span><span class='line'><span class="c"># iptables -I INPUT 1 -p udp --dport 27960 -j quake3_ddos</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># multiple servers</span>
+</span><span class='line'>iptables -I INPUT 1 -p udp --dports 27960,27961,27962 -j quake3_ddos
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Only lef to say we only filtered &#8220;getstatus&#8221; command with those iptables rules, remember the others commands as well.</p>
+
+<h2>Hunting it down across the network</h2>
+
+<p>Once we know the ins and outs of this type of DDoS attack and analyzed generate network traffic, as well as readed tool code, we are closer of being able to spot this way of flood and trying to mitigate it. We need to have in mind the fact that, lower TCP/IP layer used to detect anomalous traffic patterns, lower use of resources; it will be much easier to stop a datagram at network layer - maybe based in IP addresses of known Quake 3 servers ;) - than going up to application layer trying to stop a datagram based on its payload and, when dealing with attacks of dozens or hundred of Gbs, the difference will be crucial.</p>
+
+<h3>Using tshark for network analysis</h3>
+
+<p><a href="http://www.wireshark.org/docs/wsug_html_chunked/AppToolstshark.html">tshark</a> is a terminal based version of Wireshark for doing powerful and quick network packet capturing/analysis and is really useful when doing network forensics because we can use Wireshark&#8217;s <a href="http://wiki.wireshark.org/DisplayFilters">DisplayFilters</a> including <a href="http://www.wireshark.org/docs/dfref/">a lot</a> of supported protocols.</p>
+
+<p>Also, if you are interested in tshark/network analysis, I highly recommend <a href="http://www.packtpub.com/traffic-analysis-with-tshark/book">this</a> ebook called &#8220;Instant Traffic Analysis with Tshark How-to&#8221; and written by <a href="https://twitter.com/BorjaMerino">Borja Merino</a>, it offers a quick and really useful set of recipes for analyzing traffic with tshark, totally worths it.</p>
+
+<p>For example, let&#8217;s specify tshark to show Quake 3 datagrams (using <a href="http://anonsvn.wireshark.org/wireshark/trunk/epan/dissectors/packet-quake3.c">quake3 dissector</a>) with a UDP length of 22 bytes (we could set <a href="http://www.wireshark.org/docs/dfref/q/quake3.html">more specific options</a>):</p>
+
+<figure class='code'><figcaption><span>network forensics with tshark</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>tshark -r udp_quake3.pcap.cloaked -R <span class="s1">&#39;udp.length == 22 &amp;&amp; quake3&#39;</span>
+</span><span class='line'> 33   0.002043  128.66.0.32 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+</span><span class='line'> 50   0.003085 128.66.142.197 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+</span><span class='line'> 83   0.005171 128.66.227.122 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+</span><span class='line'>106   0.006501  128.66.78.4 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+</span><span class='line'>124   0.007610 128.66.249.35 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+</span><span class='line'>129   0.007930 128.66.238.141 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+</span><span class='line'>140   0.008582 128.66.189.147 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+</span><span class='line'>144   0.008812 128.66.238.48 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+</span><span class='line'>147   0.009012 128.66.249.35 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+</span><span class='line'>157   0.009582 128.66.75.113 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+</span><span class='line'>179   0.010909 128.66.238.48 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>By default tshark will print info with this format &#8220;frame number; relative time; source IP; destination IP; dissected protocol; frame size (bytes); protocol dissected info&#8221; as shown above but it isn&#8217;t well formatted for an easy processing, so let&#8217;s say tshark to show output as formatted CSV:</p>
+
+<figure class='code'><figcaption><span>tshark csv output</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>tshark -r udp_quake3.pcap.cloaked -R <span class="s1">&#39;udp.length == 22 &amp;&amp; quake3&#39;</span> -T fields -E <span class="nv">separator</span><span class="o">=</span><span class="s1">&#39;;&#39;</span> -e ip.src -e udp.srcport -e ip.dst
+</span><span class='line'>128.66.79.215;27960;128.66.7.9
+</span><span class='line'>128.66.159.73;27960;128.66.7.9
+</span><span class='line'>128.66.119.203;27960;128.66.7.9
+</span><span class='line'>128.66.58.250;27960;128.66.7.9
+</span><span class='line'>128.66.232.7;27960;128.66.7.9
+</span><span class='line'>128.66.120.133;27960;128.66.7.9
+</span><span class='line'>128.66.212.39;27960;128.66.7.9
+</span><span class='line'>128.66.156.90;27960;128.66.7.9
+</span><span class='line'>128.66.189.147;27960;128.66.7.9
+</span><span class='line'>128.66.160.78;27960;128.66.7.9
+</span><span class='line'>128.66.29.104;27960;128.66.7.9
+</span><span class='line'>128.66.143.194;27960;128.66.7.9
+</span><span class='line'>128.66.188.75;27960;128.66.7.9
+</span><span class='line'>128.66.221.179;27960;128.66.7.9
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we could make a script to consume tshark output and deploy firewall rules in almost real-time or, maybe, make some pretty statistics for the unavoidable report once the attack has finished / been mitigated.</p>
+
+<p>Probably you are asking yourself the reason I specified an UDP length of 22 bytes, so take a look to the structure of an UDP datagram:<br/>
+<img src="http://blog.alejandronolla.com/images/upload/2013/08/udp_header.png"></p>
+
+<p>As we saw when analyzing udp.c code and his mistakes, an UDP header size is 8 bytes plus any payload, because in this case we have a payload of 14 <em>(&#8220;&#8230;.disconnect&#8221;)</em> bytes it does a total sum of 22 bytes for a triggered response of &#8220;disconnect&#8221; (response provoked by bad seted UDP length in original udp.c code) so it would be useful against this specific bad coded version of attackers&#8217; tool, despite of it should be improved and/or adapted for others versions of scripts or for a well carried spoofed attack in which Quake 3 servers will answer with server info and no with a &#8220;disconnect&#8221; command.</p>
+
+<p>At last but not least, tshark also allow to use Wireshark&#8217;s &#8221;<a href="http://www.wireshark.org/docs/man-pages/wireshark-filter.html">contains</a>&#8221; and &#8220;match&#8221; filters to show only those packets with a specific pattern:</p>
+
+<figure class='code'><figcaption><span>thsark filtering UDP datagrams with &#8220;&#8230;.disconnect&#8221; text</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>tshark -r udp_quake3.pcap.cloaked -R <span class="s1">&#39;udp contains ff:ff:ff:ff:64:69:73:63:6f:6e:6e:65:63:74&#39;</span>
+</span><span class='line'> 33   0.002043  128.66.0.32 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+</span><span class='line'> 50   0.003085 128.66.142.197 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+</span><span class='line'> 70   0.004313 128.66.143.168 -&gt; 128.66.7.9   UDP 60 Source port: 27967  Destination port: 65511
+</span><span class='line'> 79   0.004898 128.66.12.63 -&gt; 128.66.7.9   UDP 60 Source port: 27003  Destination port: 13190
+</span><span class='line'> 81   0.005006 128.66.239.175 -&gt; 128.66.7.9   UDP 60 Source port: 27990  Destination port: 5475
+</span><span class='line'> 83   0.005171 128.66.227.122 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+</span><span class='line'>106   0.006501  128.66.78.4 -&gt; 128.66.7.9   QUAKE3 60 Connectionless Unknown
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>When comparing these results against the previous ones we can observe more amplifiers servers because we are not relying on UDP source port but in UDP payload content to detect them.</p>
+
+<h3>Using ngrep to build iptables rules</h3>
+
+<p><a href="http://ngrep.sourceforge.net/">ngrep</a> is a network troubleshooting tool that allow us to analyze previously captured traffic in a pcap file or a life sniffing session to debug traffic in a similar way like &#8220;grep&#8221; Unix tool, his primary goal is to parse and display plaintext protocols like HTTP or SMTP.</p>
+
+<p>In this case we are going to &#8220;grep&#8221; for a &#8220;&#8230;.disconnect&#8221; string specifying to don&#8217;t print hash marks (-q) :</p>
+
+<figure class='code'><figcaption><span>network forensic with ngrep</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>ngrep -q -I udp_quake3.pcap.cloaked <span class="s1">&#39;\xFF\xFF\xFF\xFFdisconnect&#39;</span>
+</span><span class='line'>U 128.66.238.228:27961 -&gt; 128.66.7.9:26457
+</span><span class='line'>....disconnect....
+</span><span class='line'>
+</span><span class='line'>U 128.66.0.103:27960 -&gt; 128.66.7.9:65247
+</span><span class='line'>....disconnect....
+</span><span class='line'>
+</span><span class='line'>U 128.66.217.157:27960 -&gt; 128.66.7.9:48320
+</span><span class='line'>....disconnect....
+</span><span class='line'>
+</span><span class='line'>U 128.66.238.48:27960 -&gt; 128.66.7.9:32267
+</span><span class='line'>....disconnect....
+</span><span class='line'>
+</span><span class='line'>U 128.66.132.204:27960 -&gt; 128.66.7.9:58316
+</span><span class='line'>....disconnect....
+</span><span class='line'>
+</span><span class='line'>U 128.66.168.194:27993 -&gt; 128.66.7.9:12525
+</span><span class='line'>....disconnect....
+</span><span class='line'>
+</span><span class='line'>U 128.66.168.248:27961 -&gt; 128.66.7.9:8946
+</span><span class='line'>....disconnect....
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>While this format is easy to read by a human we would need to parse it prior to doing any kind of filtering. For example, we could parse this output to just show Quake 3 amplifiers servers being used in the attack to generate some type of firewall rule:</p>
+
+<figure class='code'><figcaption><span>parsing ngrep output to get just amplifiers IP addresses</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>ngrep -q -I udp_quake3.pcap.cloaked <span class="s1">&#39;\xFF\xFF\xFF\xFFdisconnect&#39;</span> | awk <span class="s1">&#39;/U [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+/{print $2}&#39;</span> | cut -d <span class="s1">&#39;:&#39;</span> -f 1 | sort -u
+</span><span class='line'>128.66.99.246
+</span><span class='line'>128.66.99.28
+</span><span class='line'>192.0.2.155
+</span><span class='line'>192.0.2.239
+</span><span class='line'>192.0.2.45
+</span><span class='line'>198.51.100.213
+</span><span class='line'>198.51.100.225
+</span><span class='line'>198.51.100.65
+</span><span class='line'>203.0.113.120
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We could go a step ahead and create a set of DROP rules for a Linux router with iptables beyond parsing ngrep output:</p>
+
+<figure class='code'><figcaption><span>generating iptables rules based on ngrep output</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span><span class="k">for </span>ip in <span class="sb">`</span>ngrep -q -I udp_quake3.pcap.cloaked <span class="s1">&#39;\xFF\xFF\xFF\xFFdisconnect&#39;</span> | awk <span class="s1">&#39;/U [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+/{print $2}&#39;</span> | cut -d <span class="s1">&#39;:&#39;</span> -f 1 | sort -u<span class="sb">`</span>; <span class="k">do </span><span class="nb">echo</span> <span class="s2">&quot;iptables -A FORWARD -s $ip -j DROP&quot;</span> &gt;&gt; quake3_ddos.iptables; <span class="k">done</span>
+</span><span class='line'><span class="nv">$ </span>head -n 5 quake3_ddos.iptables
+</span><span class='line'>iptables -A FORWARD -s 128.66.0.103 -j DROP
+</span><span class='line'>iptables -A FORWARD -s 128.66.0.18 -j DROP
+</span><span class='line'>iptables -A FORWARD -s 128.66.0.181 -j DROP
+</span><span class='line'>iptables -A FORWARD -s 128.66.0.246 -j DROP
+</span><span class='line'>iptables -A FORWARD -s 128.66.0.27 -j DROP
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Parsing attack with scapy and automatic deployment of a Cisco IOS access-list</h3>
+
+<p>Ok, analyzing network traffic and spotting attack patterns is fun, but analyzing traffic looking for previously spotted pattern and automatically blocking attacking IP addresses at perimetral routers is far better, so I&#8217;m going to explain how to make such easy but powerful script in a few lines with python.</p>
+
+<p>We are going to need <a href="http://www.secdev.org/projects/scapy/">scapy</a> again as well as <a href="https://github.com/knipknap/exscript/wiki">exscript</a> module to interact with Cisco routers. Then we just need to analyze UDP datagrams and look for &#8220;&#8230;.disconnect&#8221; or &#8220;&#8230;.statusResponse&#8221; in payload content to list Quake 3 servers being used as amplifiers, once done only remains to create access-list entries for those IP address.</p>
+
+<p>Here is an example for doing this process:</p>
+
+<figure class='code'><figcaption><span>quake3_ddos_parser.py</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/env python</span>
+</span><span class='line'><span class="c">#coding:utf-8</span>
+</span><span class='line'><span class="c"># Author: Alejandro Nolla - z0mbiehunt3r</span>
+</span><span class='line'><span class="c"># Purpose: Example for identifying Quake 3 amplifiers and block them with Cisco access-list </span>
+</span><span class='line'><span class="c"># Created: 21/06/13</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">sys</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">try</span><span class="p">:</span>
+</span><span class='line'>    <span class="kn">from</span> <span class="nn">Exscript.util.interact</span> <span class="kn">import</span> <span class="n">read_login</span>
+</span><span class='line'>    <span class="kn">from</span> <span class="nn">Exscript.protocols</span> <span class="kn">import</span> <span class="n">SSH2</span>
+</span><span class='line'><span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+</span><span class='line'>    <span class="k">print</span> <span class="s">&#39;You need exscript (https://github.com/knipknap/exscript)&#39;</span>
+</span><span class='line'>    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">logging</span>
+</span><span class='line'><span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&quot;scapy.runtime&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span> <span class="c"># supress everything below error</span>
+</span><span class='line'><span class="k">try</span><span class="p">:</span>
+</span><span class='line'>    <span class="kn">from</span> <span class="nn">scapy.all</span> <span class="kn">import</span> <span class="n">rdpcap</span>
+</span><span class='line'><span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+</span><span class='line'>    <span class="k">print</span> <span class="s">&#39;You need scapy (http://www.secdev.org/projects/scapy/)&#39;</span>
+</span><span class='line'>    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="c">#----------------------------------------------------------------------</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">extract_quake3_amplifiers</span><span class="p">(</span><span class="n">pcap_file_path</span><span class="p">):</span>
+</span><span class='line'>    <span class="sd">&quot;&quot;&quot;</span>
+</span><span class='line'><span class="sd">    It will classify an IP address as an amplifier if UDP payload</span>
+</span><span class='line'><span class="sd">    consists of &quot;....disconnect&quot; or &quot;....statusResponse&quot; command</span>
+</span><span class='line'><span class="sd">    </span>
+</span><span class='line'><span class="sd">    @param pcap_file_path: Path to pcap file to parse</span>
+</span><span class='line'><span class="sd">    @type pcap_file_path: str</span>
+</span><span class='line'><span class="sd">    </span>
+</span><span class='line'><span class="sd">    @return: Set with amplifiers servers</span>
+</span><span class='line'><span class="sd">    @rtype: set</span>
+</span><span class='line'><span class="sd">    &quot;&quot;&quot;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">amplifiers_servers</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="sd">&#39;&#39;&#39;</span>
+</span><span class='line'><span class="sd">    rdpcap will read all packets at once, if you need to read</span>
+</span><span class='line'><span class="sd">    it sequentially take a look to PcapReader</span>
+</span><span class='line'><span class="sd">    http://www.sourcecodebrowser.com/scapy/1.0.2/classscapy_1_1_pcap_reader.html</span>
+</span><span class='line'><span class="sd">    &#39;&#39;&#39;</span>
+</span><span class='line'>    <span class="n">packets</span> <span class="o">=</span> <span class="n">rdpcap</span><span class="p">(</span><span class="n">pcap_file_path</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">for</span> <span class="n">packet</span> <span class="ow">in</span> <span class="n">packets</span><span class="p">:</span>
+</span><span class='line'>        <span class="k">if</span> <span class="ow">not</span> <span class="n">packet</span><span class="o">.</span><span class="n">haslayer</span><span class="p">(</span><span class="s">&#39;UDP&#39;</span><span class="p">):</span>
+</span><span class='line'>            <span class="k">continue</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">packet</span><span class="o">.</span><span class="n">haslayer</span><span class="p">(</span><span class="s">&#39;Raw&#39;</span><span class="p">):</span>
+</span><span class='line'>            <span class="n">raw_udp_payload</span> <span class="o">=</span> <span class="n">packet</span><span class="o">.</span><span class="n">getlayer</span><span class="p">(</span><span class="s">&#39;Raw&#39;</span><span class="p">)</span>
+</span><span class='line'>            <span class="n">ip_layer</span> <span class="o">=</span> <span class="n">packet</span><span class="o">.</span><span class="n">getlayer</span><span class="p">(</span><span class="s">&#39;IP&#39;</span><span class="p">)</span>
+</span><span class='line'>            <span class="k">if</span> <span class="n">raw_udp_payload</span><span class="o">.</span><span class="n">load</span> <span class="o">==</span> <span class="s">&#39;</span><span class="se">\xff\xff\xff\xff</span><span class="s">disconnect&#39;</span> <span class="ow">or</span>\
+</span><span class='line'>               <span class="n">raw_udp_payload</span><span class="o">.</span><span class="n">load</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">18</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;</span><span class="se">\xff\xff\xff\xff</span><span class="s">statusResponse&#39;</span><span class="p">:</span>
+</span><span class='line'>                <span class="n">amplifiers_servers</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ip_layer</span><span class="o">.</span><span class="n">src</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">amplifiers_servers</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="k">if</span> <span class="n">__name__</span><span class="o">==</span><span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+</span><span class='line'>    <span class="n">PCAP_FILE</span> <span class="o">=</span> <span class="s">&#39;./udp_quake3.pcap.cloaked&#39;</span>
+</span><span class='line'>    <span class="k">print</span> <span class="s">&#39;&#39;&#39;Example of Quake 3 DDoS amplification attack parser to automatically deploy Cisco IOS access-list</span>
+</span><span class='line'><span class="s">    - by Alejandro Nolla (z0mbiehunt3r)&#39;&#39;&#39;</span>
+</span><span class='line'>    <span class="k">print</span> <span class="s">&#39;[*] Parsing </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span><span class="n">PCAP_FILE</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">amplifiers_servers</span> <span class="o">=</span> <span class="n">extract_quake3_amplifiers</span><span class="p">(</span><span class="n">PCAP_FILE</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">print</span> <span class="s">&#39;[+] Got </span><span class="si">%i</span><span class="s"> amplifiers servers being used in the attack...&#39;</span> <span class="o">%</span><span class="nb">len</span><span class="p">(</span>
+</span><span class='line'>                                                                          <span class="n">amplifiers_servers</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">account</span> <span class="o">=</span> <span class="n">read_login</span><span class="p">()</span> <span class="c"># read login from prompt</span>
+</span><span class='line'>    <span class="n">conn</span> <span class="o">=</span> <span class="n">SSH2</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">conn</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s">&#39;192.168.1.245&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">conn</span><span class="o">.</span><span class="n">login</span><span class="p">(</span><span class="n">account</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">print</span> <span class="n">conn</span><span class="o">.</span><span class="n">response</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s">&#39;config t&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">print</span> <span class="n">conn</span><span class="o">.</span><span class="n">response</span>
+</span><span class='line'>    <span class="c"># create access-list</span>
+</span><span class='line'>    <span class="k">print</span> <span class="s">&#39;[!] Deploying access-list, take a coffee...&#39;</span>
+</span><span class='line'>    <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s">&#39;ip access-list extended quake3_ddos&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">for</span> <span class="n">server</span> <span class="ow">in</span> <span class="n">amplifiers_servers</span><span class="p">:</span>
+</span><span class='line'>        <span class="sd">&#39;&#39;&#39;</span>
+</span><span class='line'><span class="sd">        here we directly block IP protocol but we could block UDP for Quake 3</span>
+</span><span class='line'><span class="sd">        responses and ICMP protocol for traffic potentially being generated</span>
+</span><span class='line'><span class="sd">        for hosts/ports unreachable and so on typical in DDoS attacks</span>
+</span><span class='line'><span class="sd">        (backscatter effect)</span>
+</span><span class='line'><span class="sd">        </span>
+</span><span class='line'><span class="sd">        Also, we could block only ports being used in the attack (game ones, finite)</span>
+</span><span class='line'><span class="sd">        &#39;&#39;&#39;</span>
+</span><span class='line'>        <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s">&#39;deny ip host </span><span class="si">%s</span><span class="s"> any&#39;</span> <span class="o">%</span><span class="n">server</span><span class="p">)</span> <span class="c"># add one rule per amplifier</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c"># caution with implicit deny (legitimate users&#39; traffic, routing protocols, etc)</span>
+</span><span class='line'>    <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s">&#39;permit ip any any&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="c"># apply access-list to interface</span>
+</span><span class='line'>    <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s">&#39;interface fastEthernet 1/1&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s">&#39;ip access-group quake3_ddos in&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="c"># quick&#39;n dirty way for copy running-config startup-config</span>
+</span><span class='line'>    <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s">&#39;do wr&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">print</span> <span class="n">conn</span><span class="o">.</span><span class="n">response</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;exit</span><span class="se">\r</span><span class="s">&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">print</span> <span class="s">&#39;[-] SLD-26 shield deployed&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Time to execute it and await, it&#8217;s going to take his time when processing a real DDoS capture (millions of packets), so it&#8217;s highly recommended to make a prior filter with tshark and adapt this script to use multiple CPUs (or programming it in C):</p>
+
+<figure class='code'><figcaption><span>parsing and generating access-list</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>python quake3_ddos_parser.py
+</span><span class='line'>Example of Quake 3 DDoS amplification attack parser to automatically deploy Cisco IOS access-list
+</span><span class='line'>    - by Alejandro Nolla <span class="o">(</span>z0mbiehunt3r<span class="o">)</span>
+</span><span class='line'><span class="o">[</span>*<span class="o">]</span> Parsing ./udp_quake3.pcap.cloaked
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> Got 455 amplifiers servers being used in the attack...
+</span><span class='line'>Please enter your user name <span class="o">[</span>z0mbiehunt3r<span class="o">]</span>: cisco
+</span><span class='line'>Please enter your password:
+</span><span class='line'>
+</span><span class='line'>Endor#
+</span><span class='line'>config t
+</span><span class='line'>Enter configuration commands, one per line.  End with CNTL/Z.
+</span><span class='line'>Endor<span class="o">(</span>config<span class="o">)</span><span class="c">#</span>
+</span><span class='line'><span class="o">[</span>!<span class="o">]</span> Deploying access-list, take a coffee...
+</span><span class='line'><span class="k">do </span>wr
+</span><span class='line'>Building configuration...
+</span><span class='line'><span class="o">[</span>OK<span class="o">]</span>
+</span><span class='line'>Endor<span class="o">(</span>config-ext-nacl<span class="o">)</span><span class="c">#</span>
+</span><span class='line'><span class="o">[</span>-<span class="o">]</span> SLD-26 shield deployed
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now connect to our router and check if everything went ok:</p>
+
+<figure class='code'><figcaption><span>checking access-list for quake 3 amplifiers</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='ios'><span class='line'><span class="k">Endor&gt;</span> enable
+</span><span class='line'><span class="k">Endor#</span> show ip access-lists quake3_ddos
+</span><span class='line'><span class="k">Extended</span> IP access list quake3_ddos
+</span><span class='line'><span class="k">  10</span> <span class="ow">deny</span> ip host <span class="m">192.0.2.239</span> any
+</span><span class='line'><span class="k">  20</span> <span class="ow">deny</span> ip host <span class="m">128.66.194.14</span> any
+</span><span class='line'><span class="k">  30</span> <span class="ow">deny</span> ip host <span class="m">128.66.233.82</span> any
+</span><span class='line'><span class="k">  40</span> <span class="ow">deny</span> ip host <span class="m">128.66.186.59</span> any
+</span><span class='line'><span class="k">  50</span> <span class="ow">deny</span> ip host <span class="m">128.66.150.252</span> any
+</span><span class='line'><span class="k">  [...]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Well, so it seems access-list was created ok, attack traffic should begin to be dropped (at filtering router) in seconds, time to figure out next attack vector that will try being exploited, attackers will move to another technique for sure.</p>
+
+<h3>Creating a snort rule</h3>
+
+<p>If we have a snort sensor or IPS system we could create specific rules based on detected attack pattern to protect us against analyzed DDoS technique. Anyway, going up to application layer is highly discouraged to mitigate a real DDoS attack because it will require more CPU and RAM to process each packet not only because of unwrapping more layers but because specific &#8220;simple&#8221; filtering actions like filtering on IP addresses and/or ports are performed through packet forwarding hardware (<a href="http://en.wikipedia.org/wiki/Application-specific_integrated_circuit">ASIC</a>) and will be far better than a CPU filtering approach done in most majority of appliances.</p>
+
+<p>For testing purposes I have used a <a href="http://securityonion.blogspot.com.es/">security onion</a> virtual machine with snort and <a href="https://snorby.org/">snorby</a> running for capturing and visualizing alerts respectively. To create a snort rule to detect inbound DDoS amplification attack using Quake 3 servers we are going to look for &#8220;&#8230;disconnect&#8221; (again it works only for analyzed script and should be extended to the others already analyzed caseloads) in UDP payload, now it&#8217;s time to read <a href="http://manual.snort.org/node27.html">&#8220;Writing Snort Rules&#8221;</a>:</p>
+
+<figure class='code'><figcaption><span>detecting attack with snort</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c"># vim /etc/nsm/rules/local.rules</span>
+</span><span class='line'>alert udp any any -&gt; any any <span class="o">(</span>msg:<span class="s2">&quot;Quake 3 DDoS amplification attack INBOUND&quot;</span>; content:<span class="s2">&quot;|ff ff ff ff 64 69 73 63 6f 6e 6e 65 63 74|&quot;</span>; nocase; offset:0; depth:14; sid:1000666; rev:1;<span class="o">)</span>
+</span><span class='line'><span class="c"># rule-update</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>alert udp any any -> any any: analyze any source:port to any destination:port if UDP</li>
+<li>content: tell snort hex string to search</li>
+<li>nocase: in a no case sensitive way</li>
+<li>offset: start analyzing in offset 0 for payload</li>
+<li>depth: and only up to next 14 bytes (for speed optimization, size of content searched)</li>
+</ul>
+
+
+<p>If we create this rule and use scapy as shown before to send a UDP datagram with this pattern an alert will be triggered and a new event will be shown in our snorby interface:<br/>
+<img src="http://blog.alejandronolla.com/images/upload/2013/08/snorby_rule.png"></p>
+
+<p>If we analyze with attention the previous image we are can see IP ToS, TTL, UDP length and payload as previously analyzed, so it seems our patterns works fine (despited of it should be improved).</p>
+
+<h2>Conclusions</h2>
+
+<p>After spending some weeks researching about this kind of attack vector -using several games servers as amplifiers- I&#8217;m sure it&#8217;s an attack that can be really powerful to launch storms of spoofed UDP datagrams with almost no cost or effort at all, it&#8217;s really easy to get an almost real time updated list of online servers without having to make any kind of port scanning but just parsing online gaming directories and, to make matters worse, amplification factors can be up to several dozens original throughput and, because this kind of attack is less known, IT people will be less aware and ready to face off such techniques.</p>
+
+<p>The fact that this kind of attack is being actively used in DDoS as a service platforms to launch attacks from several web booters makes important to know this attack, how to detect it and how to try to defend against him, so stay alert and see you at next post!</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Amplification DDoS attack with Quake3 servers: An analysis (1/2)]]></title>
