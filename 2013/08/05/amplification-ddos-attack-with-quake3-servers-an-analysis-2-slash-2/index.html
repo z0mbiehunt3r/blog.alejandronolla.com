@@ -424,8 +424,9 @@
 
 <p>Now we could make a script to consume tshark output and deploy firewall rules in almost real-time or, maybe, make some pretty statistics for the unavoidable report once the attack has finished / been mitigated.</p>
 
-<p>Probably you are asking yourself the reason I specified an UDP length of 22 bytes, so take a look to the structure of an UDP datagram:<br/>
-<img src="/images/upload/2013/08/udp_header.png"></p>
+<p>Probably you are asking yourself the reason I specified an UDP length of 22 bytes, so take a look to the structure of an UDP datagram:</p>
+
+<p><img src="/images/upload/2013/08/udp_header.png"></p>
 
 <p>As we saw when analyzing udp.c code and his mistakes, an UDP header size is 8 bytes plus any payload, because in this case we have a payload of 14 <em>(&#8220;&#8230;.disconnect&#8221;)</em> bytes it does a total sum of 22 bytes for a triggered response of &#8220;disconnect&#8221; (response provoked by bad seted UDP length in original udp.c code) so it would be useful against this specific bad coded version of attackers&#8217; tool, despite of it should be improved and/or adapted for others versions of scripts or for a well carried spoofed attack in which Quake 3 servers will answer with server info and no with a &#8220;disconnect&#8221; command.</p>
 
@@ -860,8 +861,9 @@
 </ul>
 
 
-<p>If we create this rule and use scapy as shown before to send a UDP datagram with this pattern an alert will be triggered and a new event will be shown in our snorby interface:<br/>
-<img src="/images/upload/2013/08/snorby_rule.png"></p>
+<p>If we create this rule and use scapy as shown before to send a UDP datagram with this pattern an alert will be triggered and a new event will be shown in our snorby interface:</p>
+
+<p><img src="/images/upload/2013/08/snorby_rule.png"></p>
 
 <p>If we analyze with attention the previous image we are can see IP ToS, TTL, UDP length and payload as previously analyzed, so it seems our patterns works fine (despited of it should be improved).</p>
 
